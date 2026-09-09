@@ -1,6 +1,11 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-const config = JSON.parse(readFileSync("wrangler.jsonc", "utf8"));
+// Wrangler accepts JSONC, while Node's JSON.parse accepts JSON only. Remove
+// comments and trailing commas before creating the deployment-specific config.
+const jsonc = readFileSync("wrangler.jsonc", "utf8")
+  .replace(/\/\/.*$/gm, "")
+  .replace(/,\s*([}\]])/g, "$1");
+const config = JSON.parse(jsonc);
 const id = process.env.D1_DATABASE_ID;
 if (
   !id ||
