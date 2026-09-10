@@ -16,17 +16,13 @@ O ZIP inclui PNGs em ordem, legendas, texto alternativo, prompt de IA e snapshot
 
 Na prévia diária ou no conteúdo gerado do Calendário, ajuste **Segundos por página** (padrão: 8; intervalo: 3 a 20) e clique em **Baixar vídeo MP4**. Todas as páginas viram um único vídeo vertical 1080 × 1920, H.264, 30 quadros por segundo, na ordem do carrossel. Uma arte diária vira uma página fixa durante o tempo escolhido. O limite total é de 180 segundos.
 
-O vídeo usa sempre o layout Shorts, independentemente do formato escolhido para PNG/ZIP. A exportação acontece no navegador e mostra o progresso; mantenha a aba aberta até terminar. Se o navegador não oferecer o codificador necessário, o sistema informa o problema e orienta tentar Chrome ou Edge atualizado no computador.
+O vídeo usa sempre o layout Shorts, enquanto PNG/ZIP usam o formato fixo de Instagram/Threads. A exportação acontece no navegador e mostra o progresso; mantenha a aba aberta até terminar. Se o navegador não oferecer o codificador necessário, o sistema informa o problema e orienta tentar Chrome ou Edge atualizado no computador.
 
 O arquivo sai sem áudio, música ou narração. Envie o MP4 ao YouTube e use o título/descrição fornecidos pelo sistema; adicione áudio lá se desejar. Exportar não confirma a postagem, não modifica o snapshot e não publica automaticamente. Esta função usa as artes do sistema; não importa imagens externas de IA.
 
-## Imagens para YouTube / Shorts
+## Imagens para Instagram / Threads
 
-Na prévia, escolha **Formato da imagem → YouTube / Shorts · 1080 × 1920 (9:16)**. O seletor está em Criar conteúdo, nas versões arquivadas e nos itens do Calendário. A imagem usa mais espaço vertical, com as seções reposicionadas e margens extras, preservando os textos e os dados completos.
-
-O PNG e o ZIP usam o formato selecionado; os nomes terminam em `shorts-9x16`. O ZIP também identifica as dimensões em `formato.json`, e o prompt para IA solicita 9:16. Para Instagram/Threads, selecione **1080 × 1350 (4:5)**. Trocar o formato não altera os números da versão arquivada nem as confirmações de postagem.
-
-Ao transformar a imagem em vídeo, mantenha o projeto em 9:16 e use a imagem inteira, sem zoom ou recorte automático. As imagens já baixadas não mudam: exporte novamente na versão para Shorts. Imagens geradas por IA fora do sistema precisam ser solicitadas nesse formato; o seletor adapta os templates gerados pela aplicação.
+As prévias, PNGs, ZIPs e prompts de imagem usam sempre 1080 × 1350 (4:5), inclusive nas versões arquivadas. Não há seletor de formato: para YouTube, use **Baixar vídeo MP4**, que monta as páginas em 1080 × 1920 (9:16).
 
 ## Rotina
 

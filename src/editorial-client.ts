@@ -31,7 +31,7 @@ import {
   exportEditorial,
   editorialImagePrompt,
 } from "./editorial-art";
-import { ART_FORMATS, artFormatOptions, type ArtFormat } from "./art-format";
+import { ART_FORMATS } from "./art-format";
 type Api = (path: string, method?: string, body?: unknown) => Promise<any>;
 type Version = {
   id: string;
@@ -69,7 +69,6 @@ export async function mountEditorial(
   notify: (s: string, error?: boolean) => void,
   milestones = false,
 ) {
-  let artFormat: ArtFormat = "feed";
   let month = today().slice(0, 7),
     filter = "all",
     kind = "all",
@@ -307,7 +306,7 @@ export async function mountEditorial(
        )}</textarea></label><p class="hint">Até cinco selecionadas. Marque reviewed=true somente após conferir a fonte, a data, o resumo, o contexto e o comentário. Sem fatos relevantes? Cancele o item com esse motivo.</p><button>Salvar notícias</button></form>${d.news.map((n) => `<p><a href="${e(n.url)}" target="_blank" rel="noopener noreferrer">${e(n.title)}</a> · ${e(n.source)} · ${e(stamp(n.published_at))}</p>`).join("")}</section>`
      : ""
  }
- <section class="panel"><label>Formato da imagem<select id="editorial-art-format">${artFormatOptions()}</select></label><p class="hint">PNG e ZIP usam o formato selecionado. Para Shorts, escolha 1080 × 1920 e mantenha a imagem inteira no editor de vídeo.</p><div class="editorial-toolbar"><button id="generate" class="primary">${version ? "Gerar nova versão" : "Gerar conteúdo"}</button>${version ? '<button id="zip">Baixar pacote ZIP</button><button id="prompt">Copiar prompt para IA</button>' : ""}</div>${
+ <section class="panel"><p class="hint">Imagens para Instagram/Threads: 1080 × 1350 (4:5). Vídeo para YouTube/Shorts: 1080 × 1920 (9:16).</p><div class="editorial-toolbar"><button id="generate" class="primary">${version ? "Gerar nova versão" : "Gerar conteúdo"}</button>${version ? '<button id="zip">Baixar pacote ZIP</button><button id="prompt">Copiar prompt para IA</button>' : ""}</div>${
    !version
      ? '<p class="hint">A geração verifica compras, cotação e observações necessárias. As pendências serão informadas.</p>'
      : `<p>Versão de ${e(stamp(version.created_at))} • ${version.reviewed_at ? "revisada" : "aguardando revisão"}</p><div id="art-pages" class="art-pages"></div>${videoControls}<details><summary>Editar textos do carrossel</summary><p class="hint">Cria outra versão para revisão. Confira os números com o snapshot antes de publicar.</p><form id="pages-form"><textarea id="pages-json" rows="12" spellcheck="false">${e(
@@ -374,13 +373,6 @@ export async function mountEditorial(
       })();
     };
     button("#generate", () => action("generate", {}));
-    const formatSelector = dialog.querySelector<HTMLSelectElement>(
-      "#editorial-art-format",
-    )!;
-    formatSelector.value = artFormat;
-    formatSelector.onchange = () => {
-      artFormat = formatSelector.value as ArtFormat;
-    };
     if (snapshot && version) {
       bindVideo(
         dialog,
@@ -389,7 +381,7 @@ export async function mountEditorial(
       );
       let canvases: HTMLCanvasElement[] = [];
       const refreshArts = async () => {
-        const renderedFormat = artFormat;
+        const renderedFormat = "feed";
         canvases = [];
         dialog.querySelector("#art-pages")!.replaceChildren();
         try {
@@ -420,18 +412,14 @@ export async function mountEditorial(
         }
       };
       await refreshArts();
-      formatSelector.onchange = run(async () => {
-        artFormat = formatSelector.value as ArtFormat;
-        await refreshArts();
-      });
       button("#zip", async () => {
         if (!canvases.length)
           throw new Error("Corrija o texto das páginas antes de exportar.");
-        await exportEditorial(snapshot, canvases, artFormat);
+        await exportEditorial(snapshot, canvases, "feed");
       });
       button("#prompt", async () => {
         await navigator.clipboard.writeText(
-          editorialImagePrompt(snapshot, artFormat),
+          editorialImagePrompt(snapshot, "feed"),
         );
         notify("Prompt copiado.");
       });
@@ -507,11 +495,7 @@ export async function mountEditorial(
           const s: EditorialSnapshot = JSON.parse(
             d.versions.find((v) => v.id === b.dataset.version)!.snapshot_json,
           );
-          await exportEditorial(
-            s,
-            await renderEditorial(s, artFormat),
-            artFormat,
-          );
+          await exportEditorial(s, await renderEditorial(s, "feed"), "feed");
         })),
     );
     if (i.kind === "radar") {

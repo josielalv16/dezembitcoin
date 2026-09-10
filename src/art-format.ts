@@ -13,7 +13,3 @@ export const ART_FORMATS = {
     suffix: "shorts-9x16",
   },
 } as const;
-export const artFormatOptions = () =>
-  Object.entries(ART_FORMATS)
-    .map(([key, value]) => `<option value="${key}">${value.label}</option>`)
-    .join("");
