@@ -69,7 +69,7 @@ Altere a data e o prazo para adiar. Use **Pausado** para suspender um item. **Ca
 
 No item, use **Copiar prompt de pesquisa** em uma ferramenta com busca na web. O prompt pede o período e um arquivo JSON compatível. Importe a pesquisa e confira os campos visuais de cada notícia. Importações sempre entram sem revisão. Também é possível cadastrar notícias manualmente. Selecione até cinco; todas precisam ter fato, contexto, comentário e conferência antes da geração.
 
-As páginas distinguem notícia de análise/inferência e levam as URLs. Não há publicação automática. Sem fatos relevantes, cancele o Radar com esse motivo, sem transformar falha de coleta em afirmação de que não houve notícias.
+As páginas distinguem notícia de análise/inferência e levam as URLs. O envio às redes pelo Buffer exige revisão e autorização explícita dos materiais. Sem fatos relevantes, cancele o Radar com esse motivo, sem transformar falha de coleta em afirmação de que não houve notícias.
 
 **Copiar prompt para IA** permite criar uma variação visual fora do sistema, inclusive a reflexão de domingo. Não é necessário contratar uma API para usar os templates PNG. Esta versão não chama modelos de IA, não importa imagens externas para o arquivo de versões e não cria agendamento dentro do ChatGPT/Codex; a automação implantada é a coleta RSS no Worker. O arquivo baixado pelo sistema reproduz sua própria arte programática.
 
@@ -95,8 +95,16 @@ Cada ocorrência guarda compras de referência, valor, data e cotação quando a
 
 ## Agendamento e backup
 
-O terceiro cron, `0 21 * * *`, faz manutenção diária às 18h de Brasília: mantém o horizonte de meses configurado, analisa marcos e, às sextas, coleta candidatos do Radar. Os dois crons de cotação continuam. O horário real e as falhas são registrados; uma falha pode ser tratada pelos botões do painel. Não há promessa de execução pontual ou de disponibilidade das fontes.
+O terceiro cron, `0 * * * *`, consulta os envios do Buffer a cada hora e faz manutenção diária às 18h de Brasília: mantém o horizonte de meses configurado, analisa marcos e, às sextas, coleta candidatos do Radar. Os dois crons de cotação continuam. O horário real e as falhas são registrados; uma falha pode ser tratada pelos botões do painel. Não há promessa de execução pontual ou de disponibilidade das fontes.
 
 O backup JSON passa a `version: 2`, mantendo os dados antigos e adicionando calendário, versões, publicações, histórico, configurações, marcos, notícias e execuções. Não inclui senhas. A restauração continua administrativa e assistida.
 
 As publicações arquivadas antes desta atualização permanecem em **Publicações**. Elas não são vinculadas automaticamente a cartões, pois não há como inferir com segurança a equivalência entre os conteúdos.
+
+## Publicação pelo Buffer
+
+Instagram, Threads e TikTok são as redes padrão dos novos cartões. O histórico e a confirmação manual do YouTube continuam disponíveis. Configure a integração conforme [DEPLOY-BUFFER.md](DEPLOY-BUFFER.md).
+
+No conteúdo revisado, prepare os arquivos, confira as prévias, as legendas, os perfis e o horário e autorize o envio. Instagram e Threads recebem as imagens; TikTok recebe um MP4 vertical. Agendamentos aparecem em Publicações e só viram publicados após confirmação da API. Envios ativos impedem alterações nos materiais; cancele o agendamento antes de refazer a versão.
+
+O backup inclui os registros e referências da integração, mas não a chave da API nem os arquivos binários do R2.

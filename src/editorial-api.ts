@@ -33,6 +33,9 @@ const tables = [
   "milestone_events",
   "editorial_news",
   "editorial_jobs",
+  "buffer_assets",
+  "buffer_channels",
+  "buffer_deliveries",
 ] as const;
 const now = () => new Date().toISOString();
 const today = () => localDay(now());
@@ -264,7 +267,7 @@ async function route(
     const requested = month.parse(
       url.searchParams.get("month") ?? today().slice(0, 7),
     );
-    const [items, publications, versions, news, settings, jobs] =
+    const [items, publications, versions, news, settings, jobs, deliveries] =
       await Promise.all([
         url.searchParams.get("scope") === "archive"
           ? all<CalendarItem>(
@@ -302,6 +305,10 @@ async function route(
           env,
           "SELECT * FROM editorial_jobs ORDER BY executed_at DESC LIMIT 10",
         ),
+        all(
+          env,
+          "SELECT id,item_id,service,status,due_at,post_id,url FROM buffer_deliveries WHERE status NOT IN ('rejected','cancelled')",
+        ),
       ]);
     const data = await financialData(env);
     return response({
@@ -325,6 +332,7 @@ async function route(
         };
       }),
       publications,
+      deliveries,
       settings,
       jobs,
     });
@@ -422,6 +430,20 @@ async function route(
     return response({ item, versions, publications, news, history, event });
   }
   const body = await readBody(request);
+  const pendingBuffer = await env.DB.prepare(
+    "SELECT id FROM buffer_deliveries WHERE item_id=? AND status NOT IN ('sent','cancelled','rejected') LIMIT 1",
+  )
+    .bind(id)
+    .first();
+  if (
+    pendingBuffer &&
+    (method === "PUT" ||
+      ["generate", "draft", "news", "collect"].includes(action))
+  )
+    throw new EditorialError(
+      "Este conteúdo tem envio ativo no Buffer. Resolva ou cancele no Buffer antes de alterar os materiais.",
+      409,
+    );
   const { revision } = z.object({ revision: z.number().int() }).parse(body);
   if (revision !== item.revision)
     throw new EditorialError(
@@ -468,7 +490,7 @@ async function route(
         channels: z
           .array(z.enum(CHANNELS))
           .min(1)
-          .max(3)
+          .max(4)
           .refine((v) => new Set(v).size === v.length),
       })
       .parse(body);
@@ -667,7 +689,7 @@ async function route(
     const p = z
       .object({
         versionId: z.string(),
-        channels: z.array(z.enum(CHANNELS)).min(1).max(3),
+        channels: z.array(z.enum(CHANNELS)).min(1).max(4),
         published_at: z.string().datetime({ offset: true }),
         url: z.string().max(2000).default(""),
         note: z.string().max(600).default(""),

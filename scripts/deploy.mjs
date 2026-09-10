@@ -17,6 +17,14 @@ if (
   );
 }
 config.d1_databases[0].database_id = id;
+// Optional until the user enables R2. Existing features remain deployable without it.
+if (process.env.R2_BUCKET_NAME) {
+  if (!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(process.env.R2_BUCKET_NAME))
+    throw new Error("R2_BUCKET_NAME inválido.");
+  config.r2_buckets = [
+    { binding: "MEDIA", bucket_name: process.env.R2_BUCKET_NAME },
+  ];
+} else delete config.r2_buckets;
 writeFileSync("wrangler.generated.json", JSON.stringify(config, null, 2));
 for (const args of [
   [

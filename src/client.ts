@@ -17,6 +17,7 @@ import {
 } from "./domain";
 import { renderArt, downloadArt, downloadBlob } from "./art";
 import { mountEditorial } from "./editorial-client";
+import { mountBuffer } from "./buffer-client";
 type Content = {
   id: string;
   created_at: string;
@@ -110,6 +111,7 @@ function render() {
     ["calendar", "Calendário", "▦"],
     ["milestones", "Marcos", "⚑"],
     ["archive", "Publicações", "▤"],
+    ["buffer", "Buffer", "⇧"],
   ];
   app.innerHTML = `<aside><a class="brand" href="#dashboard"><img src="/logo.png" alt=""><strong>DEZ EM<br>BITCOIN</strong></a><p class="nav-label">SEU DESAFIO</p><nav>${nav.map(([id, name, icon]) => `<button data-page="${id}" class="${page === id ? "active" : ""}"><span>${icon}</span>${name}</button>`).join("")}</nav><div class="aside-bottom"><span class="live-dot"></span> Diário privado<button id="backup">↓ Exportar backup</button><button id="logout">Sair</button></div></aside><main class="workspace"><header><div><p class="eyebrow">DEZ POR DIA, RUMO AO MILHÃO</p><h1>${nav.find((n) => n[0] === page)?.[1]}</h1></div><div class="header-date">${dateLabel(today())}<span>Dia ${dayNumber(today())} do desafio</span></div></header><div id="page"></div></main>`;
   document.querySelectorAll<HTMLButtonElement>("[data-page]").forEach(
@@ -140,6 +142,10 @@ function render() {
   );
   if (page === "calendar" || page === "milestones") {
     void act(() => mountEditorial(el(), api, msg, page === "milestones"));
+    return;
+  }
+  if (page === "buffer") {
+    void act(() => mountBuffer(el(), api, msg));
     return;
   }
   (({ dashboard, purchases, quotes, archive })[page] ?? dashboard)();

@@ -101,3 +101,5 @@ Commits na `main` disparam uma nova build. Migrations já aplicadas são reconhe
 | Não há cotação em data antiga            | Captura não existia; o ticker atual não recupera aquele instante |
 
 Referências oficiais: [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/), [migrations D1](https://developers.cloudflare.com/d1/reference/migrations/), [cron](https://developers.cloudflare.com/workers/configuration/cron-triggers/), [secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
+
+Para habilitar Instagram, Threads e TikTok com aprovação e agendamento, siga [Configuração do Buffer e R2](DEPLOY-BUFFER.md). Sem R2_BUCKET_NAME na build, o deploy continua funcionando com a integração desabilitada.

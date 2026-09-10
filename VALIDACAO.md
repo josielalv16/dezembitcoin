@@ -44,3 +44,10 @@ Verificado localmente em 09/09/2026, com Node 24, Wrangler e D1 local. Nenhuma b
 - Navegador: login, compra com vírgula decimal, confirmação do saldo líquido, painel, geração e download dos três formatos de PNG, arquivamento. Conferência visual em 1440 × 1000 e 390 × 844.
 
 Limites: o cron foi validado em código e no empacotamento, mas sua execução no Cloudflare depende da implantação. O vínculo D1, permissões do token de build, senha e agendamentos reais precisam ser conferidos no painel seguindo DEPLOY-CLOUDFLARE.md. O banco de produção começa vazio. O visual das artes é um template programático baseado na identidade aprovada.
+
+## Integração Buffer
+
+- Testes automatizados cobrem aprovação, perfil autorizado, versão atual, concorrência, falha de rede sem reenvio, cancelamento, resposta atrasada e confirmação por rede. Utilizam SQLite com as migrations reais e API Buffer simulada.
+- Navegador: aprovação desmarcada por padrão, prévias de seis PNGs e MP4 vertical, upload de sete arquivos ao R2 local e três envios simulados. Nenhuma publicação real realizada.
+- HTTP: mídia MP4 com Range retornou 206; endpoints privados sem autenticação retornaram 401.
+- A conexão e a publicação reais dependem de configurar BUFFER_API_KEY, R2 e os perfis e de aprovar um conteúdo na conta do usuário.

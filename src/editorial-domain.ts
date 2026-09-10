@@ -14,7 +14,7 @@ import {
   type Quote,
   type Snapshot,
 } from "./domain";
-export const CHANNELS = ["instagram", "threads", "youtube"] as const;
+export const CHANNELS = ["instagram", "threads", "tiktok", "youtube"] as const;
 export const WEEK = [
   "reflection",
   "difficulty",
@@ -176,6 +176,7 @@ export interface EditorialSnapshot {
   financial: Snapshot | null;
   pages: Slide[];
   captions: {
+    tiktok?: string;
     instagram: string;
     threads: string;
     youtubeTitle: string;
@@ -674,6 +675,7 @@ export function buildEditorial(
           .join("\n")
       : "";
   const captions = {
+    tiktok: `${item.title}\n\n${summary}${sources}\n\n#DezEmBitcoin #Bitcoin`,
     instagram: `${item.title}\n\n${summary}${partialMonth ? "\nMês inicial parcial, desde " + item.period_start + "." : ""}\n\nDez por dia, rumo ao milhão.${financial ? "\nPosição em " + localTime(financial.asOf) + " (Brasília)." : ""}${sources}\n\n#DezEmBitcoin #Bitcoin`,
     threads:
       `${item.title}\n\n${summary}\n\nDez por dia, rumo ao milhão.`.slice(
@@ -695,7 +697,9 @@ export function buildEditorial(
     financial,
     pages,
     captions:
-      item.kind === "daily" && financial ? financial.captions : captions,
+      item.kind === "daily" && financial
+        ? { ...financial.captions, tiktok: financial.captions.instagram }
+        : captions,
     prompt,
     news: news.filter((n) => n.selected),
     warnings,

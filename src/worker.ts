@@ -1,4 +1,5 @@
 import Decimal from "decimal.js";
+import { bufferApi, publicBufferMedia, syncBuffer } from "./buffer-api";
 import { z } from "zod";
 import {
   editorialApi,
@@ -18,6 +19,8 @@ interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   ADMIN_PASSWORD?: string;
+  BUFFER_API_KEY?: string;
+  MEDIA?: R2Bucket;
 }
 const json = (v: unknown, status = 200) =>
   Response.json(v, {
@@ -188,6 +191,8 @@ async function api(request: Request, env: Env) {
   const url = new URL(request.url),
     path = url.pathname,
     method = request.method;
+  if (path.startsWith("/api/buffer/media/"))
+    return publicBufferMedia(request, env);
   if (method !== "GET" && request.headers.get("Origin") !== url.origin)
     return json({ error: "Origem não autorizada." }, 403);
   if (path === "/api/login" && method === "POST") {
@@ -228,6 +233,7 @@ async function api(request: Request, env: Env) {
   }
   if (!(await authorized(request, env)))
     return json({ error: "Entre para acessar seu diário." }, 401);
+  if (path.startsWith("/api/buffer/")) return bufferApi(request, env, readBody);
   if (path.startsWith("/api/editorial/"))
     return editorialApi(request, env, readBody);
   if (path === "/api/logout" && method === "POST")
@@ -441,7 +447,7 @@ export default {
       const response = new Response(result.body, result);
       response.headers.set(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; media-src 'self' blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
       response.headers.set("X-Content-Type-Options", "nosniff");
       response.headers.set("Referrer-Policy", "same-origin");
@@ -474,8 +480,9 @@ export default {
   ) {
     ctx.waitUntil(
       (async () => {
-        if (controller.cron === "0 21 * * *") {
-          await editorialMaintenance(env);
+        if (controller.cron === "0 * * * *") {
+          if (new Date(controller.scheduledTime).getUTCHours() === 21) await editorialMaintenance(env);
+          await syncBuffer(env);
           return;
         }
         const kind = controller.cron.includes("15") ? "midday" : "close";

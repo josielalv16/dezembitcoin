@@ -18,7 +18,8 @@
     },
   ],
   "triggers": {
-    "crons": ["0,5,10 15 * * *", "55,57,59 2 * * *", "0 21 * * *"],
+    "crons": ["0,5,10 15 * * *", "55,57,59 2 * * *", "0 * * * *"],
   },
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "dezembitcoin-media" }],
   "observability": { "enabled": true },
 }

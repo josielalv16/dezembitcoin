@@ -1,4 +1,6 @@
 import { videoControls, bindVideo } from "./video";
+import { mountBufferSend } from "./buffer-client";
+import { DELIVERY_LABELS, type Delivery } from "./buffer-domain";
 import "./editorial.css";
 import {
   CHANNELS,
@@ -100,7 +102,12 @@ export async function mountEditorial(
                     const publication = publications.find(
                       (p) => p.item_id === item.id && p.channel === channel,
                     );
-                    return `${e(channel === "youtube" ? "YouTube/Shorts" : channel)}: ${publication ? `✓ publicado${publication.version_id !== item.current_version ? " (versão anterior)" : ""}` : "pendente"}`;
+                    const delivery = (
+                      data.deliveries as Delivery[] | undefined
+                    )?.find(
+                      (d) => d.item_id === item.id && d.service === channel,
+                    );
+                    return `${e(channel === "youtube" ? "YouTube/Shorts" : channel)}: ${publication ? `✓ publicado${publication.version_id !== item.current_version ? " (versão anterior)" : ""}` : delivery ? e(DELIVERY_LABELS[delivery.status] ?? delivery.status) : "pendente"}`;
                   })
                   .join(
                     " · ",
@@ -365,8 +372,28 @@ export async function mountEditorial(
    .join(
      "",
    )}<div class="form-grid">${input("Data/hora da publicação (Brasília)", "published_at", today() + "T" + new Date().toLocaleTimeString("en-GB", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }), "datetime-local")}<label>URL (uma rede por vez)<input id="publication-url" type="url"></label></div><label>Observação<input id="publication-note" maxlength="600"></label><label class="check"><input id="published-check" type="checkbox">Confirmo que já publiquei o conteúdo nos canais que vou marcar.</label><button id="publish-all" ${version?.reviewed_at ? "" : "disabled"}>Marcar redes pendentes como publicadas</button></section>
- <details class="panel"><summary>Versões arquivadas (${d.versions.length}) e histórico</summary>${d.versions.map((v) => `<p>${e(stamp(v.created_at))} · ${v.reviewed_at ? "revisada" : "rascunho"} <button data-version="${e(v.id)}">Baixar versão</button></p>`).join("")}${d.history.map((h) => `<details><summary>${e(stamp(h.created_at))} · ${e(pretty(h.action))} · proprietário</summary><pre>${e(JSON.stringify(JSON.parse(h.details_json), null, 2))}</pre></details>`).join("")}</details>`;
+ <section class="panel" id="buffer-panel"></section><details class="panel"><summary>Versões arquivadas (${d.versions.length}) e histórico</summary>${d.versions.map((v) => `<p>${e(stamp(v.created_at))} · ${v.reviewed_at ? "revisada" : "rascunho"} <button data-version="${e(v.id)}">Baixar versão</button></p>`).join("")}${d.history.map((h) => `<details><summary>${e(stamp(h.created_at))} · ${e(pretty(h.action))} · proprietário</summary><pre>${e(JSON.stringify(JSON.parse(h.details_json), null, 2))}</pre></details>`).join("")}</details>`;
     dialog.showModal();
+    if (snapshot && version)
+      void mountBufferSend(
+        dialog.querySelector<HTMLElement>("#buffer-panel")!,
+        api,
+        id,
+        version.id,
+        snapshot,
+        !!version.reviewed_at,
+        channels,
+        async () => {
+          dialog.close();
+          dialog.remove();
+          await load();
+          await open(id);
+        },
+        d.publications.map((p) => p.channel),
+      ).catch((error) => {
+        const panel = dialog.querySelector("#buffer-panel");
+        if (panel) panel.textContent = (error as Error).message;
+      });
     if (i.kind === "daily")
       dialog.querySelector("#pages-form")?.closest("details")?.remove();
     dialog.querySelector<HTMLButtonElement>("#close-dialog")!.onclick = () => {
@@ -460,7 +487,7 @@ export async function mountEditorial(
             await navigator.clipboard.writeText(
               snapshot.captions[
                 b.dataset.copy as keyof typeof snapshot.captions
-              ],
+              ] ?? "",
             );
             notify("Texto copiado.");
           })),
