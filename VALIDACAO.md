@@ -1,5 +1,13 @@
 # Validação
 
+## Formato YouTube / Shorts — 10/09/2026
+
+- Build TypeScript/Vite aprovado e os 35 testes existentes passaram.
+- Navegador local: seleção de formato e download de uma arte diária arquivada e de um carrossel de seis páginas, nos formatos feed e Shorts.
+- Cabeçalhos dos PNGs conferidos: 1080 × 1350 no feed e 1080 × 1920 em Shorts, inclusive todas as páginas dos ZIPs. Conferência visual da arte diária e da capa do carrossel vertical.
+- `formato.json` e prompt exportado correspondem ao formato escolhido. O `snapshot.json` é idêntico entre as duas exportações, preservando os dados congelados.
+- Dados de teste exclusivamente locais. A implantação remota e o enquadramento aplicado pelo editor de vídeo não foram verificados.
+
 ## Evolução editorial — 09/09/2026
 
 - 35 testes unitários: conjunto financeiro anterior, calendário a partir do início do desafio, fevereiro bissexto, chaves estáveis, Radar sábado–sexta, bloqueio de fechamento ausente, compra após cotação, relatos obrigatórios, preparação educativa antecipada, estados por rede, precisão de snapshots, URLs, dias corridos/compras/sequência, primeira passagem da carteira, BTC líquido, recuperação, mês positivo descontando aportes e exclusão do mês inicial parcial.

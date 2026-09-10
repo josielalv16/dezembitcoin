@@ -15,6 +15,7 @@ import {
   type Snapshot,
 } from "./domain";
 import { renderArt, downloadArt, downloadBlob } from "./art";
+import { ART_FORMATS, artFormatOptions, type ArtFormat } from "./art-format";
 import { mountEditorial } from "./editorial-client";
 type Content = {
   id: string;
@@ -405,9 +406,13 @@ function content() {
   };
   if (snapshot) void preview(snapshot);
 }
-async function preview(s: Snapshot, archived = false) {
+async function preview(
+  s: Snapshot,
+  archived = false,
+  format: ArtFormat = "feed",
+) {
   const container = document.querySelector("#preview") ?? el();
-  container.innerHTML = `<section class="preview-layout"><article class="panel art-panel"><div class="section-head"><h2>${archived ? "Versão arquivada" : "Prévia da arte"}</h2><span class="badge">1080 × 1350</span></div><div id="canvas-holder"></div><div class="form-actions"><button class="primary" id="download-art">↓ Baixar PNG</button>${!archived ? '<button id="save-content">Arquivar versão</button>' : ""}</div></article><article class="panel"><h2>Textos para publicar</h2>${s.warnings.map((w) => `<div class="notice">${esc(w)}</div>`).join("")}<button id="copy-data">Copiar dados para conteúdo</button>${Object.entries(
+  container.innerHTML = `<section class="preview-layout"><article class="panel art-panel"><div class="section-head"><h2>${archived ? "Versão arquivada" : "Prévia da arte"}</h2><span class="badge">${ART_FORMATS[format].width} × ${ART_FORMATS[format].height}</span></div><label>Formato da imagem<select id="art-format">${artFormatOptions()}</select></label><p class="hint">Para montar o Short, use o formato YouTube e mantenha a imagem inteira no editor.</p><div id="canvas-holder"></div><div class="form-actions"><button class="primary" id="download-art">↓ Baixar PNG</button>${!archived ? '<button id="save-content">Arquivar versão</button>' : ""}</div></article><article class="panel"><h2>Textos para publicar</h2>${s.warnings.map((w) => `<div class="notice">${esc(w)}</div>`).join("")}<button id="copy-data">Copiar dados para conteúdo</button>${Object.entries(
     s.captions,
   )
     .map(
@@ -417,10 +422,14 @@ async function preview(s: Snapshot, archived = false) {
     .join(
       "",
     )}<p class="muted">As legendas descrevem os dados. Revise e acrescente seu relato antes de publicar.</p></article></section>`;
-  document.querySelector("#canvas-holder")!.append(await renderArt(s));
+  const selector = document.querySelector<HTMLSelectElement>("#art-format")!;
+  selector.value = format;
+  selector.onchange = () =>
+    void act(() => preview(s, archived, selector.value as ArtFormat));
+  document.querySelector("#canvas-holder")!.append(await renderArt(s, format));
   document
     .querySelector("#download-art")!
-    .addEventListener("click", () => act(() => downloadArt(s)));
+    .addEventListener("click", () => act(() => downloadArt(s, format)));
   document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach(
     (b) =>
       (b.onclick = () =>

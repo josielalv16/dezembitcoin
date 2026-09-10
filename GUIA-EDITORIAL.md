@@ -12,6 +12,14 @@
 
 O ZIP inclui PNGs em ordem, legendas, texto alternativo, prompt de IA e snapshot dos dados. O YouTube recebe título e descrição; um vídeo não é criado automaticamente.
 
+## Imagens para YouTube / Shorts
+
+Na prévia, escolha **Formato da imagem → YouTube / Shorts · 1080 × 1920 (9:16)**. O seletor está em Criar conteúdo, nas versões arquivadas e nos itens do Calendário. A imagem usa mais espaço vertical, com as seções reposicionadas e margens extras, preservando os textos e os dados completos.
+
+O PNG e o ZIP usam o formato selecionado; os nomes terminam em `shorts-9x16`. O ZIP também identifica as dimensões em `formato.json`, e o prompt para IA solicita 9:16. Para Instagram/Threads, selecione **1080 × 1350 (4:5)**. Trocar o formato não altera os números da versão arquivada nem as confirmações de postagem.
+
+Ao transformar a imagem em vídeo, mantenha o projeto em 9:16 e use a imagem inteira, sem zoom ou recorte automático. As imagens já baixadas não mudam: exporte novamente na versão para Shorts. Imagens geradas por IA fora do sistema precisam ser solicitadas nesse formato; o seletor adapta os templates gerados pela aplicação.
+
 ## Rotina
 
 | Dia     | Conteúdo complementar   | Dados necessários                                   |

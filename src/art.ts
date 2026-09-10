@@ -1,19 +1,25 @@
 import { brl, btc, pct, localTime, type Snapshot } from "./domain";
-export async function renderArt(s: Snapshot): Promise<HTMLCanvasElement> {
+import { ART_FORMATS, type ArtFormat } from "./art-format";
+export async function renderArt(
+  s: Snapshot,
+  format: ArtFormat = "feed",
+): Promise<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
-  canvas.height = 1350;
+  canvas.height = ART_FORMATS[format].height;
   const c = canvas.getContext("2d")!;
-  const bg = c.createLinearGradient(0, 0, 1080, 1350);
+  const bg = c.createLinearGradient(0, 0, 1080, canvas.height);
   bg.addColorStop(0, "#141618");
   bg.addColorStop(1, "#090b0c");
   c.fillStyle = bg;
-  c.fillRect(0, 0, 1080, 1350);
+  c.fillRect(0, 0, 1080, canvas.height);
   const glow = c.createRadialGradient(940, 130, 0, 940, 130, 600);
   glow.addColorStop(0, "#ff950026");
   glow.addColorStop(1, "#ff950000");
   c.fillStyle = glow;
   c.fillRect(0, 0, 1080, 750);
+  // Reposition complete sections without stretching text or cropping edges.
+  if (format === "shorts") c.setTransform(0.9, 0, 0, 0.9, 54, 130);
   function text(
     t: string,
     x: number,
@@ -97,6 +103,7 @@ export async function renderArt(s: Snapshot): Promise<HTMLCanvasElement> {
     800,
     600,
   );
+  if (format === "shorts") c.setTransform(0.9, 0, 0, 0.9, 54, 200);
   box(40, 410, 1000, 345);
   text("VALOR DA CARTEIRA NO CORTE", 540, 464, 24, "#afb1b4", "center", 700);
   text(brl(s.value), 540, 593, 116, "#fff", "center", 900, 920);
@@ -114,6 +121,7 @@ export async function renderArt(s: Snapshot): Promise<HTMLCanvasElement> {
     800,
     450,
   );
+  if (format === "shorts") c.setTransform(0.9, 0, 0, 0.9, 54, 350);
   box(40, 777, 1000, 310);
   text(
     s.type === "daily" ? "COMPRA DO DIA" : "NÚMEROS DO PERÍODO",
@@ -154,6 +162,7 @@ export async function renderArt(s: Snapshot): Promise<HTMLCanvasElement> {
     text(v, 990, y, 27, "#fff", "right", 700, 550);
     if (i < 3) line(y + 17);
   });
+  if (format === "shorts") c.setTransform(0.9, 0, 0, 0.9, 54, 420);
   box(40, 1105, 1000, 205);
   text(
     `Cotação: ${brl(s.quote.price)}/BTC · Bitpreço / last`,
@@ -208,9 +217,13 @@ export function downloadBlob(blob: Blob, name: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
-export async function downloadArt(s: Snapshot) {
-  const canvas = await renderArt(s);
+export async function downloadArt(s: Snapshot, format: ArtFormat = "feed") {
+  const canvas = await renderArt(s, format);
   canvas.toBlob((blob) => {
-    if (blob) downloadBlob(blob, `dez-em-bitcoin-${s.type}-${s.end}.png`);
+    if (blob)
+      downloadBlob(
+        blob,
+        `dez-em-bitcoin-${s.type}-${s.end}-${ART_FORMATS[format].suffix}.png`,
+      );
   }, "image/png");
 }

@@ -2,6 +2,7 @@ import { zipSync, strToU8 } from "fflate";
 import { renderArt, downloadBlob } from "./art";
 import { brl } from "./domain";
 import type { EditorialSnapshot, Slide } from "./editorial-domain";
+import { ART_FORMATS, type ArtFormat } from "./art-format";
 function lines(ctx: CanvasRenderingContext2D, text: string, width: number) {
   const result: string[] = [];
   for (const paragraph of text.split("\n")) {
@@ -56,22 +57,25 @@ function block(
 }
 export async function renderEditorial(
   snapshot: EditorialSnapshot,
+  format: ArtFormat = "feed",
 ): Promise<HTMLCanvasElement[]> {
   if (snapshot.kind === "daily" && snapshot.financial)
-    return [await renderArt(snapshot.financial)];
+    return [await renderArt(snapshot.financial, format)];
   return snapshot.pages.map((page, index) => {
     const c = document.createElement("canvas");
     c.width = 1080;
-    c.height = 1350;
+    c.height = ART_FORMATS[format].height;
     const ctx = c.getContext("2d")!;
     ctx.fillStyle = "#0b0d11";
-    ctx.fillRect(0, 0, 1080, 1350);
+    ctx.fillRect(0, 0, 1080, c.height);
+    if (format === "shorts") ctx.setTransform(0.9, 0, 0, 0.9, 54, 140);
     ctx.fillStyle = "#ff9b26";
     ctx.fillRect(64, 65, 8, 62);
     block(ctx, "DEZ EM BITCOIN", 96, 99, 760, 55, 32, "#f6f4ee", true);
     block(ctx, "₿", 930, 107, 100, 90, 60, "#ff9b26", true);
     block(ctx, page.label, 70, 198, 940, 60, 24, "#ffac48", true);
     block(ctx, page.title, 70, 285, 940, 260, 70, "#ffffff", true);
+    if (format === "shorts") ctx.setTransform(0.9, 0, 0, 0.9, 54, 260);
     block(
       ctx,
       page.body,
@@ -83,7 +87,9 @@ export async function renderEditorial(
       "#dce0e9",
     );
     if (page.chart?.length) drawChart(ctx, page.chart, page.chartMode);
+    if (format === "shorts") ctx.setTransform(0.9, 0, 0, 0.9, 54, 320);
     if (page.source) block(ctx, page.source, 70, 1060, 940, 130, 21, "#9eabbc");
+    if (format === "shorts") ctx.setTransform(0.9, 0, 0, 0.9, 54, 420);
     ctx.fillStyle = "#343a43";
     ctx.fillRect(70, 1210, 940, 2);
     block(
@@ -174,7 +180,16 @@ function drawChart(
 export async function exportEditorial(
   snapshot: EditorialSnapshot,
   canvases: HTMLCanvasElement[],
+  format: ArtFormat = "feed",
 ) {
+  const target = ART_FORMATS[format];
+  if (
+    !canvases.length ||
+    canvases.some((c) => c.width !== target.width || c.height !== target.height)
+  )
+    throw new Error(
+      "Atualize a prévia para o formato selecionado antes de exportar.",
+    );
   const files: Record<string, Uint8Array> = {};
   for (let i = 0; i < canvases.length; i++) {
     const blob = await new Promise<Blob>((resolve, reject) =>
@@ -201,11 +216,31 @@ export async function exportEditorial(
       .join("\n\n"),
   );
   files["snapshot.json"] = strToU8(JSON.stringify(snapshot, null, 2));
-  files["prompt-ia.txt"] = strToU8(snapshot.prompt);
+  files["prompt-ia.txt"] = strToU8(editorialImagePrompt(snapshot, format));
+  files["formato.json"] = strToU8(
+    JSON.stringify(
+      { format, width: target.width, height: target.height, layoutVersion: 2 },
+      null,
+      2,
+    ),
+  );
   downloadBlob(
     new Blob([zipSync(files, { level: 0 }) as BlobPart], {
       type: "application/zip",
     }),
-    `dez-${snapshot.kind}-${snapshot.end}.zip`,
+    `dez-${snapshot.kind}-${snapshot.end}-${target.suffix}.zip`,
+  );
+}
+export function editorialImagePrompt(
+  snapshot: EditorialSnapshot,
+  format: ArtFormat,
+) {
+  const target = ART_FORMATS[format];
+  return (
+    snapshot.prompt.replace(
+      /1080\s*[x×]\s*1350/g,
+      `${target.width}x${target.height}`,
+    ) +
+    `\nFormato obrigatório: ${target.width} × ${target.height} pixels, ${format === "shorts" ? "9:16 vertical para YouTube/Shorts. Reorganize o conteúdo inteiro, sem recortar ou esticar. Reserve margens de respiro nas laterais, no topo e na base." : "4:5 para Instagram/Threads."}`
   );
 }
