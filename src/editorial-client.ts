@@ -1,3 +1,4 @@
+import { videoControls, bindVideo } from "./video";
 import "./editorial.css";
 import {
   CHANNELS,
@@ -309,7 +310,7 @@ export async function mountEditorial(
  <section class="panel"><label>Formato da imagem<select id="editorial-art-format">${artFormatOptions()}</select></label><p class="hint">PNG e ZIP usam o formato selecionado. Para Shorts, escolha 1080 × 1920 e mantenha a imagem inteira no editor de vídeo.</p><div class="editorial-toolbar"><button id="generate" class="primary">${version ? "Gerar nova versão" : "Gerar conteúdo"}</button>${version ? '<button id="zip">Baixar pacote ZIP</button><button id="prompt">Copiar prompt para IA</button>' : ""}</div>${
    !version
      ? '<p class="hint">A geração verifica compras, cotação e observações necessárias. As pendências serão informadas.</p>'
-     : `<p>Versão de ${e(stamp(version.created_at))} • ${version.reviewed_at ? "revisada" : "aguardando revisão"}</p><div id="art-pages" class="art-pages"></div><details><summary>Editar textos do carrossel</summary><p class="hint">Cria outra versão para revisão. Confira os números com o snapshot antes de publicar.</p><form id="pages-form"><textarea id="pages-json" rows="12" spellcheck="false">${e(
+     : `<p>Versão de ${e(stamp(version.created_at))} • ${version.reviewed_at ? "revisada" : "aguardando revisão"}</p><div id="art-pages" class="art-pages"></div>${videoControls}<details><summary>Editar textos do carrossel</summary><p class="hint">Cria outra versão para revisão. Confira os números com o snapshot antes de publicar.</p><form id="pages-form"><textarea id="pages-json" rows="12" spellcheck="false">${e(
          JSON.stringify(
            snapshot!.pages.map(({ chart, ...p }) => p),
            null,
@@ -381,6 +382,11 @@ export async function mountEditorial(
       artFormat = formatSelector.value as ArtFormat;
     };
     if (snapshot && version) {
+      bindVideo(
+        dialog,
+        () => renderEditorial(snapshot, "shorts"),
+        `dez-${snapshot.kind}-${snapshot.end}`,
+      );
       let canvases: HTMLCanvasElement[] = [];
       const refreshArts = async () => {
         const renderedFormat = artFormat;

@@ -10,7 +10,15 @@
 6. Marque a conferência e clique em **Confirmar revisão**.
 7. Publique manualmente e confirme cada rede no item. É possível registrar todas as redes pendentes de uma vez após marcar a confirmação explícita.
 
-O ZIP inclui PNGs em ordem, legendas, texto alternativo, prompt de IA e snapshot dos dados. O YouTube recebe título e descrição; um vídeo não é criado automaticamente.
+O ZIP inclui PNGs em ordem, legendas, texto alternativo, prompt de IA e snapshot dos dados. Para YouTube, há também exportação separada em MP4.
+
+## Vídeo pronto para Shorts
+
+Na prévia diária ou no conteúdo gerado do Calendário, ajuste **Segundos por página** (padrão: 8; intervalo: 3 a 20) e clique em **Baixar vídeo MP4**. Todas as páginas viram um único vídeo vertical 1080 × 1920, H.264, 30 quadros por segundo, na ordem do carrossel. Uma arte diária vira uma página fixa durante o tempo escolhido. O limite total é de 180 segundos.
+
+O vídeo usa sempre o layout Shorts, independentemente do formato escolhido para PNG/ZIP. A exportação acontece no navegador e mostra o progresso; mantenha a aba aberta até terminar. Se o navegador não oferecer o codificador necessário, o sistema informa o problema e orienta tentar Chrome ou Edge atualizado no computador.
+
+O arquivo sai sem áudio, música ou narração. Envie o MP4 ao YouTube e use o título/descrição fornecidos pelo sistema; adicione áudio lá se desejar. Exportar não confirma a postagem, não modifica o snapshot e não publica automaticamente. Esta função usa as artes do sistema; não importa imagens externas de IA.
 
 ## Imagens para YouTube / Shorts
 

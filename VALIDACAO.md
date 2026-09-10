@@ -1,5 +1,12 @@
 # Validação
 
+## Exportação MP4 — 10/09/2026
+
+- Build TypeScript/Vite e 35 testes existentes aprovados. O codificador é carregado sob demanda, apenas ao pedir vídeo.
+- Playwright em navegador local: download real do MP4 de uma arte diária e de um carrossel com seis páginas, ambos com 3 segundos por página.
+- Reprodução do carrossel no elemento de vídeo do navegador, dimensões 1080 × 1920, duração de 18 segundos e busca até 16 segundos aprovadas. Última página conferida visualmente.
+- Sem postagem no YouTube nem verificação de implantação remota. Dados usados exclusivamente de teste local; exportação sem áudio e dependente de suporte do navegador ao codificador H.264.
+
 ## Formato YouTube / Shorts — 10/09/2026
 
 - Build TypeScript/Vite aprovado e os 35 testes existentes passaram.

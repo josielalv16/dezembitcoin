@@ -1,4 +1,5 @@
 import "./style.css";
+import { videoControls, bindVideo } from "./video";
 import Decimal from "decimal.js";
 import {
   START,
@@ -412,7 +413,7 @@ async function preview(
   format: ArtFormat = "feed",
 ) {
   const container = document.querySelector("#preview") ?? el();
-  container.innerHTML = `<section class="preview-layout"><article class="panel art-panel"><div class="section-head"><h2>${archived ? "Versão arquivada" : "Prévia da arte"}</h2><span class="badge">${ART_FORMATS[format].width} × ${ART_FORMATS[format].height}</span></div><label>Formato da imagem<select id="art-format">${artFormatOptions()}</select></label><p class="hint">Para montar o Short, use o formato YouTube e mantenha a imagem inteira no editor.</p><div id="canvas-holder"></div><div class="form-actions"><button class="primary" id="download-art">↓ Baixar PNG</button>${!archived ? '<button id="save-content">Arquivar versão</button>' : ""}</div></article><article class="panel"><h2>Textos para publicar</h2>${s.warnings.map((w) => `<div class="notice">${esc(w)}</div>`).join("")}<button id="copy-data">Copiar dados para conteúdo</button>${Object.entries(
+  container.innerHTML = `<section class="preview-layout"><article class="panel art-panel"><div class="section-head"><h2>${archived ? "Versão arquivada" : "Prévia da arte"}</h2><span class="badge">${ART_FORMATS[format].width} × ${ART_FORMATS[format].height}</span></div><label>Formato da imagem<select id="art-format">${artFormatOptions()}</select></label><p class="hint">Para montar o Short, use o formato YouTube e mantenha a imagem inteira no editor.</p><div id="canvas-holder"></div><div class="form-actions"><button class="primary" id="download-art">↓ Baixar PNG</button>${!archived ? '<button id="save-content">Arquivar versão</button>' : ""}</div>${videoControls}</article><article class="panel"><h2>Textos para publicar</h2>${s.warnings.map((w) => `<div class="notice">${esc(w)}</div>`).join("")}<button id="copy-data">Copiar dados para conteúdo</button>${Object.entries(
     s.captions,
   )
     .map(
@@ -422,6 +423,11 @@ async function preview(
     .join(
       "",
     )}<p class="muted">As legendas descrevem os dados. Revise e acrescente seu relato antes de publicar.</p></article></section>`;
+  bindVideo(
+    container,
+    async () => [await renderArt(s, "shorts")],
+    `dez-${s.type}-${s.end}`,
+  );
   const selector = document.querySelector<HTMLSelectElement>("#art-format")!;
   selector.value = format;
   selector.onchange = () =>
