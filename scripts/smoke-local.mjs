@@ -112,7 +112,7 @@ try {
   );
   const backup = await call("backup");
   assert.equal(backup.status, 200);
-  assert.equal(backup.data.version, 1);
+  assert.equal(backup.data.version, 2);
   assert.ok(backup.data.contents.some((c) => c.id === archive.data.id));
   assert.equal(
     (await call("snapshot", "POST", { ...request, end: "2020-01-01" })).status,

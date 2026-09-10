@@ -1,4 +1,18 @@
-# Validação da primeira versão
+# Validação
+
+## Evolução editorial — 09/09/2026
+
+- 35 testes unitários: conjunto financeiro anterior, calendário a partir do início do desafio, fevereiro bissexto, chaves estáveis, Radar sábado–sexta, bloqueio de fechamento ausente, compra após cotação, relatos obrigatórios, preparação educativa antecipada, estados por rede, precisão de snapshots, URLs, dias corridos/compras/sequência, primeira passagem da carteira, BTC líquido, recuperação, mês positivo descontando aportes e exclusão do mês inicial parcial.
+- `scripts/smoke-editorial.mjs` passou contra Wrangler/D1 local: geração repetida de 12 meses sem duplicação, bloqueio antes de revisão, duas confirmações concorrentes (uma aceita e outra 409), estados parcial/completo, desfazer com auditoria, versões anteriores intactas, bloqueio de notícias futuras, marcos sem duplicação, geração da arte do marco e backup versão 2.
+- `scripts/smoke-local.mjs` passou novamente, incluindo consulta real à Bitpreço, CRUD, autenticação, origem das alterações e arquivo financeiro anterior.
+- Migration `0002_editorial.sql` aplicada localmente. TypeScript navegador/Worker, build Vite e `wrangler deploy --dry-run` aprovados.
+- Navegador: calendário desktop (1500 × 1000) e celular (390 × 844), abertura de conteúdo, geração de comparação, preview das páginas, download ZIP, revisão e formulário de notícias. Coleta RSS real retornou candidatos do período; seu cadastro permanece sem aprovação editorial automática.
+- Cron de manutenção chamado pelo endpoint de teste local; verificação remota depende da build/implantação na conta Cloudflare.
+- `npm audit --omit=dev` não apontou vulnerabilidades nas dependências de produção na verificação.
+
+Os dados criados pelos scripts são fixtures exclusivamente locais. Esta verificação não confirma a execução futura de cron no Cloudflare, a disponibilidade permanente dos RSS ou a veracidade dos fatos de uma notícia. A revisão de conteúdo continua necessária. As integrações de IA são via prompt/importação, conforme GUIA-EDITORIAL.md.
+
+## Primeira versão
 
 Verificado localmente em 09/09/2026, com Node 24, Wrangler e D1 local. Nenhuma base remota foi criada ou alterada durante a implementação.
 

@@ -2,7 +2,7 @@
 
 Diário privado de compras de Bitcoin, com histórico de cotações, resumos, artes PNG e legendas. Aplicação TypeScript para **Cloudflare Workers + D1**, com frontend Vite e exportação de imagens no navegador. Não precisa de serviço de IA nem de renderização paga.
 
-## Primeira versão
+## Recursos financeiros
 
 - Cadastro, edição e exclusão de compras; ID de operação único; valores em reais e BTC com validação.
 - Aporte real separado do total líquido exibido pela corretora; BTC armazenado em satoshis inteiros.
@@ -67,10 +67,14 @@ Falhas aparecem na aba Cotações; não há e-mail automático nesta versão. A 
 
 ## Backup e privacidade
 
-Use **Exportar backup** periodicamente e guarde o JSON fora do serviço. Inclui compras, cotações e versões completas, com `version: 1`. A restauração exige importação administrativa assistida nesta versão. Para uma cópia nativa adicional do banco, use o export SQL do D1 no painel/CLI. Não publique backups, senhas, `.dev.vars` ou dumps em repositórios.
+Use **Exportar backup** periodicamente e guarde o JSON fora do serviço. Inclui compras, cotações, versões completas e todas as tabelas editoriais, com `version: 2`. A restauração exige importação administrativa assistida nesta versão. Para uma cópia nativa adicional do banco, use o export SQL do D1 no painel/CLI. Não publique backups, senhas, `.dev.vars` ou dumps em repositórios.
 
 A aplicação inicia vazia em produção. Os exemplos financeiros nos testes são apenas casos de validação; não são inseridos no banco. Senhas são configuradas diretamente no Cloudflare pelo proprietário. Nenhuma credencial de corretora é necessária.
 
-## Limites da primeira versão
+## Calendário editorial
+
+Calendário de 1/3/6/12 meses, conteúdos semanais e mensais, controle de publicação por rede, versões imutáveis, marcos automáticos, carrosséis PNG/ZIP, agenda ICS, relatório CSV e Radar com RSS e importação de pesquisa. Consulte [GUIA-EDITORIAL.md](GUIA-EDITORIAL.md) para o fluxo completo e as regras. A manutenção roda diariamente às 18h de Brasília; às sextas coleta candidatos de notícias para revisão. A pesquisa/composição por IA permanece externa, com prompts prontos para copiar.
+
+## Limites financeiros
 
 Voltada a um único usuário e ao histórico de compras do desafio. Não modela venda, saque, transferência com taxa, cashback ou saldo anterior. Havendo essas operações, o livro financeiro precisa ser estendido antes de tratá-las como compras. As imagens são templates programáticos consistentes, não reproduções pixel a pixel da ilustração gerada por IA. O dashboard mostra avaliação indicativa com a última cotação disponível; os conteúdos usam corte histórico estrito.

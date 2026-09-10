@@ -15,6 +15,7 @@ import {
   type Snapshot,
 } from "./domain";
 import { renderArt, downloadArt, downloadBlob } from "./art";
+import { mountEditorial } from "./editorial-client";
 type Content = {
   id: string;
   created_at: string;
@@ -105,6 +106,8 @@ function render() {
     ["dashboard", "Visão geral", "◫"],
     ["purchases", "Compras", "＋"],
     ["quotes", "Cotações", "↗"],
+    ["calendar", "Calendário", "▦"],
+    ["milestones", "Marcos", "⚑"],
     ["content", "Criar conteúdo", "▧"],
     ["archive", "Publicações", "▤"],
   ];
@@ -135,6 +138,10 @@ function render() {
       msg("Backup exportado. Guarde em um local seguro.");
     }),
   );
+  if (page === "calendar" || page === "milestones") {
+    void act(() => mountEditorial(el(), api, msg, page === "milestones"));
+    return;
+  }
   (({ dashboard, purchases, quotes, content, archive })[page] ?? dashboard)();
 }
 async function act(fn: () => Promise<void>) {

@@ -62,11 +62,13 @@ O **token de API da build** e **ADMIN_PASSWORD** têm funções diferentes: o pr
 Na página do Worker:
 
 - **Bindings:** deve existir `DB`, tipo D1, apontando para `dezembitcoin`.
-- **Settings → Trigger Events / Cron Triggers:** devem aparecer `0,5,10 15 * * *` e `55,57,59 2 * * *`.
+- **Settings → Trigger Events / Cron Triggers:** devem aparecer `0,5,10 15 * * *`, `55,57,59 2 * * *` e `0 21 * * *`.
 - As expressões são UTC. Correspondem a meio-dia e 23h55 de Brasília, com novas tentativas se a primeira falhar.
 - Mudanças de cron podem levar alguns minutos para propagar. O horário de execução não é uma garantia absoluta; o post sempre informa a coleta real.
 
 Não adicione cron manual duplicado: a configuração já está versionada em `wrangler.jsonc`.
+
+O terceiro cron faz a manutenção editorial às 18h de Brasília e coleta candidatos do Radar às sextas. A migration `0002_editorial.sql` adiciona as tabelas sem apagar compras, cotações ou arquivos antigos. Para atualizar a instalação existente, mantenha **build: `npm run build`** e **deploy: `npm run deploy`**, o mesmo D1_DATABASE_ID e ADMIN_PASSWORD. Não há nova variável obrigatória. Após o deploy, abra **Calendário → Gerar calendário** e confira **Marcos**. Guia: [GUIA-EDITORIAL.md](GUIA-EDITORIAL.md).
 
 ## 5. Primeiro acesso
 

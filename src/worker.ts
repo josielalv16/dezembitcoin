@@ -1,6 +1,12 @@
 import Decimal from "decimal.js";
 import { z } from "zod";
 import {
+  editorialApi,
+  editorialBackup,
+  editorialMaintenance,
+  syncMilestones,
+} from "./editorial-api";
+import {
   START,
   localDay,
   makeSnapshot,
@@ -222,6 +228,8 @@ async function api(request: Request, env: Env) {
   }
   if (!(await authorized(request, env)))
     return json({ error: "Entre para acessar seu diário." }, 401);
+  if (path.startsWith("/api/editorial/"))
+    return editorialApi(request, env, readBody);
   if (path === "/api/logout" && method === "POST")
     return new Response("{}", {
       headers: {
@@ -236,10 +244,11 @@ async function api(request: Request, env: Env) {
       "SELECT * FROM contents ORDER BY created_at",
     ).all();
     const response = json({
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       ...data,
       contents: contents.results,
+      editorial: await editorialBackup(env),
     });
     response.headers.set(
       "Content-Disposition",
@@ -397,10 +406,37 @@ async function api(request: Request, env: Env) {
   return json({ error: "Rota não encontrada." }, 404);
 }
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx?: ExecutionContext,
+  ): Promise<Response> {
     try {
-      if (new URL(request.url).pathname.startsWith("/api/"))
-        return await api(request, env);
+      const path = new URL(request.url).pathname;
+      if (path.startsWith("/api/")) {
+        const result = await api(request, env);
+        if (
+          result.ok &&
+          request.method !== "GET" &&
+          (path.startsWith("/api/purchases") || path === "/api/quotes")
+        )
+          ctx?.waitUntil(
+            syncMilestones(env).catch(async () => {
+              await env.DB.prepare(
+                "INSERT INTO editorial_jobs VALUES(?,?,?,?,?)",
+              )
+                .bind(
+                  crypto.randomUUID(),
+                  new Date().toISOString(),
+                  "marcos",
+                  0,
+                  "Falha ao analisar após alteração. Use Analisar marcos agora.",
+                )
+                .run();
+            }),
+          );
+        return result;
+      }
       const result = await env.ASSETS.fetch(request);
       const response = new Response(result.body, result);
       response.headers.set(
@@ -438,6 +474,10 @@ export default {
   ) {
     ctx.waitUntil(
       (async () => {
+        if (controller.cron === "0 21 * * *") {
+          await editorialMaintenance(env);
+          return;
+        }
         const kind = controller.cron.includes("15") ? "midday" : "close";
         await capture(env, kind, controller.scheduledTime);
         await env.DB.batch([
