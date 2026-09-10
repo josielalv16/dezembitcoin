@@ -266,24 +266,31 @@ async function route(
     );
     const [items, publications, versions, news, settings, jobs] =
       await Promise.all([
-        all<CalendarItem>(
-          env,
-          url.searchParams.get("scope") === "late"
-            ? "SELECT * FROM calendar_items WHERE deadline>=? AND deadline<? ORDER BY deadline,planned_date"
-            : "SELECT * FROM calendar_items WHERE planned_date>=? AND planned_date<? ORDER BY planned_date,extra,kind",
-          url.searchParams.get("scope") === "late"
-            ? "2026-09-09"
-            : ["today", "week"].includes(url.searchParams.get("scope") ?? "")
-              ? today()
-              : requested + "-01",
-          url.searchParams.get("scope") === "late"
-            ? today()
-            : url.searchParams.get("scope") === "today"
-              ? addDays(today(), 1)
-              : url.searchParams.get("scope") === "week"
-                ? addDays(today(), 7)
-                : monthShift(requested, 1) + "-01",
-        ),
+        url.searchParams.get("scope") === "archive"
+          ? all<CalendarItem>(
+              env,
+              "SELECT * FROM calendar_items WHERE EXISTS (SELECT 1 FROM editorial_versions v WHERE v.item_id=calendar_items.id) OR EXISTS (SELECT 1 FROM editorial_publications p WHERE p.item_id=calendar_items.id) ORDER BY planned_date DESC,created_at DESC",
+            )
+          : all<CalendarItem>(
+              env,
+              url.searchParams.get("scope") === "late"
+                ? "SELECT * FROM calendar_items WHERE deadline>=? AND deadline<? ORDER BY deadline,planned_date"
+                : "SELECT * FROM calendar_items WHERE planned_date>=? AND planned_date<? ORDER BY planned_date,extra,kind",
+              url.searchParams.get("scope") === "late"
+                ? "2026-09-09"
+                : ["today", "week"].includes(
+                      url.searchParams.get("scope") ?? "",
+                    )
+                  ? today()
+                  : requested + "-01",
+              url.searchParams.get("scope") === "late"
+                ? today()
+                : url.searchParams.get("scope") === "today"
+                  ? addDays(today(), 1)
+                  : url.searchParams.get("scope") === "week"
+                    ? addDays(today(), 7)
+                    : monthShift(requested, 1) + "-01",
+            ),
         all<Publication>(env, "SELECT * FROM editorial_publications"),
         all<{ id: string; reviewed_at: string | null }>(
           env,

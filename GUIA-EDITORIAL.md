@@ -2,6 +2,8 @@
 
 ## Começar
 
+A criação fica concentrada no **Calendário**. A página **Publicações** reúne os conteúdos gerados de todos os meses, incluindo marcos, com o status por rede. **Abrir conteúdo** dá acesso à mesma revisão, às artes, legendas, ao MP4 e às confirmações do Calendário. Itens com versões anteriores continuam acessíveis mesmo quando precisam ser gerados novamente. O **Arquivo anterior** preserva os conteúdos do fluxo antigo; a tela **Criar conteúdo** foi removida.
+
 1. Abra **Calendário** e escolha o mês inicial, 1/3/6/12 meses e o dia de início dos conteúdos mensais.
 2. Clique em **Gerar calendário**. Repetir a operação não duplica nem sobrescreve itens existentes.
 3. Abra um cartão. Em **Planejamento e observações**, ajuste data, prazo, título, relato pessoal e redes.

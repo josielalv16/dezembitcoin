@@ -109,7 +109,6 @@ function render() {
     ["quotes", "Cotações", "↗"],
     ["calendar", "Calendário", "▦"],
     ["milestones", "Marcos", "⚑"],
-    ["content", "Criar conteúdo", "▧"],
     ["archive", "Publicações", "▤"],
   ];
   app.innerHTML = `<aside><a class="brand" href="#dashboard"><img src="/logo.png" alt=""><strong>DEZ EM<br>BITCOIN</strong></a><p class="nav-label">SEU DESAFIO</p><nav>${nav.map(([id, name, icon]) => `<button data-page="${id}" class="${page === id ? "active" : ""}"><span>${icon}</span>${name}</button>`).join("")}</nav><div class="aside-bottom"><span class="live-dot"></span> Diário privado<button id="backup">↓ Exportar backup</button><button id="logout">Sair</button></div></aside><main class="workspace"><header><div><p class="eyebrow">DEZ POR DIA, RUMO AO MILHÃO</p><h1>${nav.find((n) => n[0] === page)?.[1]}</h1></div><div class="header-date">${dateLabel(today())}<span>Dia ${dayNumber(today())} do desafio</span></div></header><div id="page"></div></main>`;
@@ -143,7 +142,7 @@ function render() {
     void act(() => mountEditorial(el(), api, msg, page === "milestones"));
     return;
   }
-  (({ dashboard, purchases, quotes, content, archive })[page] ?? dashboard)();
+  (({ dashboard, purchases, quotes, archive })[page] ?? dashboard)();
 }
 async function act(fn: () => Promise<void>) {
   try {
@@ -361,51 +360,6 @@ function quotes() {
   }</section><section class="panel"><h2>Últimas tentativas automáticas e manuais</h2>${data.runs.length ? data.runs.map((r) => `<div class="run"><span class="${r.success ? "positive" : "negative"}">${r.success ? "● Sucesso" : "● Falha"}</span><span>${localTime(r.attempted_at)} · ${labelKind(r.kind)}</span><small>${esc(r.message)}</small></div>`).join("") : "<p>As tentativas de coleta aparecerão aqui.</p>"}</section>`;
   document.querySelector("#collect")!.addEventListener("click", collect);
 }
-function content() {
-  el().innerHTML = `<section class="panel"><h2>Transforme seus números em história.</h2><p>Escolha o período e uma cotação salva. As compras posteriores ao corte não entram no cálculo.</p><form id="content-form"><div class="form-grid four"><label>Formato<select name="type"><option value="daily">Diário</option><option value="weekly">Semanal</option><option value="monthly">Mensal</option></select></label><label>De<input type="date" name="start" value="${today()}" min="${START}" max="${today()}" required></label><label>Até<input type="date" name="end" value="${today()}" min="${START}" max="${today()}" required></label><label>Cotação de referência<select name="quoteId" required></select></label></div><button class="primary">Preparar conteúdo</button></form></section><div id="preview"></div>`;
-  const form = document.querySelector<HTMLFormElement>("#content-form")!,
-    type = form.elements.namedItem("type") as HTMLSelectElement,
-    start = form.elements.namedItem("start") as HTMLInputElement,
-    end = form.elements.namedItem("end") as HTMLInputElement,
-    quote = form.elements.namedItem("quoteId") as HTMLSelectElement;
-  const options = () => {
-    quote.innerHTML = data.quotes
-      .filter((q) => q.day === end.value)
-      .reverse()
-      .map(
-        (q) =>
-          `<option value="${q.id}">${labelKind(q.kind)} · ${localTime(q.captured_at)}</option>`,
-      )
-      .join("");
-    if (!quote.options.length)
-      quote.innerHTML = '<option value="">Sem cotação nesta data</option>';
-  };
-  const sync = () => {
-    start.value =
-      type.value === "daily"
-        ? end.value
-        : type.value === "weekly"
-          ? [START, addDays(end.value, -6)].sort().at(-1)!
-          : [START, end.value.slice(0, 7) + "-01"].sort().at(-1)!;
-    start.readOnly = type.value === "daily";
-    options();
-  };
-  type.onchange = sync;
-  end.onchange = sync;
-  sync();
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    void act(async () => {
-      snapshot = await api(
-        "snapshot",
-        "POST",
-        Object.fromEntries(new FormData(form)),
-      );
-      await preview(snapshot!);
-    });
-  };
-  if (snapshot) void preview(snapshot);
-}
 async function preview(s: Snapshot, archived = false) {
   const container = document.querySelector("#preview") ?? el();
   container.innerHTML = `<section class="preview-layout"><article class="panel art-panel"><div class="section-head"><h2>${archived ? "Versão arquivada" : "Prévia da arte"}</h2><span class="badge">1080 × 1350</span></div><p class="hint">Imagens para Instagram/Threads (4:5). O vídeo é gerado em formato vertical (9:16).</p><div id="canvas-holder"></div><div class="form-actions"><button class="primary" id="download-art">↓ Baixar PNG</button>${!archived ? '<button id="save-content">Arquivar versão</button>' : ""}</div>${videoControls}</article><article class="panel"><h2>Textos para publicar</h2>${s.warnings.map((w) => `<div class="notice">${esc(w)}</div>`).join("")}<button id="copy-data">Copiar dados para conteúdo</button>${Object.entries(
@@ -471,7 +425,7 @@ async function preview(s: Snapshot, archived = false) {
   );
 }
 function archive() {
-  el().innerHTML = `<section class="panel"><h2>Conteúdos preservados</h2><p>Os números de cada versão ficam congelados. Marque as redes em que você já publicou.</p>${
+  el().innerHTML = `<div id="editorial-archive"></div><section class="panel"><h2>Arquivo anterior</h2><p>Os números de cada versão ficam congelados. Marque as redes em que você já publicou.</p>${
     data.contents.length
       ? data.contents
           .map((c) => {
@@ -481,9 +435,18 @@ function archive() {
           .join("")
       : empty(
           "Seu arquivo de conteúdo.",
-          "Prepare uma arte e clique em “Arquivar versão” para guardá-la aqui.",
+          "Os conteúdos novos são criados no Calendário e aparecem na lista acima.",
         )
   }</section><div id="preview"></div>`;
+  void act(() =>
+    mountEditorial(
+      document.querySelector<HTMLElement>("#editorial-archive")!,
+      api,
+      msg,
+      false,
+      true,
+    ),
+  );
   document.querySelectorAll<HTMLInputElement>("[data-channel]").forEach(
     (b) =>
       (b.onchange = () =>

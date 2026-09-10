@@ -68,6 +68,7 @@ export async function mountEditorial(
   api: Api,
   notify: (s: string, error?: boolean) => void,
   milestones = false,
+  publicationsView = false,
 ) {
   let month = today().slice(0, 7),
     filter = "all",
@@ -85,6 +86,36 @@ export async function mountEditorial(
     root.querySelector<HTMLButtonElement>(selector)!.onclick = run(fn);
   };
   async function load() {
+    if (publicationsView) {
+      const data = await api("editorial/data?scope=archive");
+      if (!root.isConnected) return;
+      const publications = data.publications as Publication[];
+      root.innerHTML = `<section class="panel"><h2>Conteúdos do Calendário</h2><p>Conteúdos gerados de todos os meses, incluindo marcos. Abra para revisar, baixar e confirmar as redes publicadas.</p>${
+        data.items.length
+          ? data.items
+              .map((item: CalendarItem) => {
+                const channels = JSON.parse(item.channels_json) as string[];
+                return `<article class="archive-item"><div><h3>${e(item.title)}</h3><small>${e(item.planned_date.split("-").reverse().join("/"))} · ${e(LABELS[item.kind] ?? item.kind)} · ${e(item.state)}</small><p>${channels
+                  .map((channel) => {
+                    const publication = publications.find(
+                      (p) => p.item_id === item.id && p.channel === channel,
+                    );
+                    return `${e(channel === "youtube" ? "YouTube/Shorts" : channel)}: ${publication ? `✓ publicado${publication.version_id !== item.current_version ? " (versão anterior)" : ""}` : "pendente"}`;
+                  })
+                  .join(
+                    " · ",
+                  )}</p></div><button data-archive-item="${e(item.id)}">Abrir conteúdo</button></article>`;
+              })
+              .join("")
+          : "<p>Nenhum conteúdo gerado ainda. Crie seu primeiro conteúdo no Calendário.</p>"
+      }</section>`;
+      root
+        .querySelectorAll<HTMLButtonElement>("[data-archive-item]")
+        .forEach((button) => {
+          button.onclick = run(() => open(button.dataset.archiveItem!));
+        });
+      return;
+    }
     if (milestones) {
       await loadMilestones();
       return;

@@ -1,5 +1,11 @@
 # Validação
 
+## Publicações integradas ao Calendário — 10/09/2026
+
+- Build e 35 testes existentes aprovados. Consulta do arquivo editorial inclui itens com versões ou confirmações, independentemente do mês planejado.
+- Navegador com D1 local: três conteúdos do Calendário apareceram em Publicações; abertura de conteúdo com exportação MP4 disponível; ausência de Criar conteúdo no menu confirmada. Arquivo anterior preservado.
+- Sem alteração ou migração de dados de produção.
+
 ## Exportação MP4 — 10/09/2026
 
 - Build TypeScript/Vite e 35 testes existentes aprovados. O codificador é carregado sob demanda, apenas ao pedir vídeo.
