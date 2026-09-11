@@ -1,5 +1,6 @@
 import {
   BUFFER_SERVICES,
+  isVideoService,
   DELIVERY_LABELS,
   type BufferService,
   type Delivery,
@@ -15,7 +16,12 @@ const escape = (value: unknown) =>
         c
       ]!,
   );
-const names = { instagram: "Instagram", threads: "Threads", tiktok: "TikTok" };
+const names = {
+  instagram: "Instagram",
+  threads: "Threads",
+  tiktok: "TikTok",
+  youtube: "YouTube / Shorts",
+};
 function link(url: string) {
   try {
     return new URL(url).protocol === "https:" ? escape(url) : "";
@@ -30,7 +36,7 @@ export async function mountBuffer(
 ) {
   const status = await api("buffer/status");
   if (!root.isConnected) return;
-  root.innerHTML = `<section class="panel"><h2>Conectar ao Buffer</h2><p>Instagram, Threads e TikTok. YouTube fora da automação por enquanto.</p><p>Chave da API: <strong>${status.keyConfigured ? "configurada" : "pendente"}</strong> · Armazenamento: <strong>${status.storageConfigured ? "configurado" : "pendente"}</strong></p><p class="hint">Configure o segredo BUFFER_API_KEY no Worker e o bucket R2 conforme DEPLOY-BUFFER.md. A chave nunca é enviada para esta tela.</p><button id="buffer-discover" ${status.keyConfigured ? "" : "disabled"}>Buscar perfis conectados</button><div id="buffer-profiles"></div><h3>Perfis selecionados</h3>${status.mappings.length ? status.mappings.map((m: any) => `<p>${escape(m.service)} · ${escape(m.name)}</p>`).join("") : "<p>Nenhum perfil selecionado.</p>"}<p>Gere e revise um conteúdo no Calendário. Depois use “Preparar envio ao Buffer” e aprove a publicação ou o agendamento.</p><a href="https://publish.buffer.com" target="_blank" rel="noopener noreferrer">Abrir Buffer</a></section>`;
+  root.innerHTML = `<section class="panel"><h2>Conectar ao Buffer</h2><p>Instagram, Threads e TikTok na conta principal; YouTube em uma segunda conta.</p><p>Chave da API: <strong>${status.keyConfigured ? "configurada" : "pendente"}</strong> · Chave do YouTube: <strong>${status.youtubeKeyConfigured ? "configurada" : "pendente"}</strong> · Armazenamento: <strong>${status.storageConfigured ? "configurado" : "pendente"}</strong></p><p class="hint">Configure os segredos BUFFER_API_KEY (conta principal) e BUFFER_YOUTUBE_API_KEY (YouTube) no Worker e o bucket R2 conforme DEPLOY-BUFFER.md. A chave nunca é enviada para esta tela.</p><button id="buffer-discover" ${status.keyConfigured || status.youtubeKeyConfigured ? "" : "disabled"}>Buscar perfis conectados</button><div id="buffer-profiles"></div><h3>Perfis selecionados</h3>${status.mappings.length ? status.mappings.map((m: any) => `<p>${escape(m.service)} · ${escape(m.name)}</p>`).join("") : "<p>Nenhum perfil selecionado.</p>"}<p>Gere e revise um conteúdo no Calendário. Depois use “Preparar envio ao Buffer” e aprove a publicação ou o agendamento.</p><a href="https://publish.buffer.com" target="_blank" rel="noopener noreferrer">Abrir Buffer</a></section>`;
   const button = root.querySelector<HTMLButtonElement>("#buffer-discover")!;
   button.onclick = async () => {
     button.disabled = true;
@@ -103,11 +109,14 @@ export async function mountBufferSend(
   const available = BUFFER_SERVICES.filter(
     (service) =>
       itemChannels.includes(service) &&
+      (service === "youtube"
+        ? configuration.youtubeKeyConfigured
+        : configuration.keyConfigured) &&
       !publishedChannels.includes(service) &&
       configuration.mappings.some((m: any) => m.service === service) &&
       !active(service),
   );
-  root.innerHTML = `<h3>Publicação pelo Buffer</h3><p>Imagens no Instagram/Threads e vídeo vertical no TikTok. Você confere e aprova antes de enviar.</p><div>${deliveries.map((d) => `<article class="archive-item"><div><strong>${escape(names[d.service])}: ${escape(DELIVERY_LABELS[d.status] ?? d.status)}</strong><p>${escape(d.error)}</p>${d.due_at ? `<small>Horário: ${escape(new Date(d.due_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }))} (Brasília)</small>` : ""}${d.url && link(d.url) ? `<p><a href="${link(d.url)}" target="_blank" rel="noopener noreferrer">Ver publicação</a></p>` : ""}<small>Registro: ${escape(d.id)}${d.post_id ? ` · Buffer: ${escape(d.post_id)}` : ""}</small>${d.post_id && ["scheduled", "error", "draft", "needs_approval"].includes(d.status) ? `<label class="check"><input type="checkbox" data-cancel-check="${escape(d.id)}">Quero cancelar este envio no Buffer</label><button type="button" data-cancel="${escape(d.id)}">Cancelar agendamento</button>` : ""}${d.status === "uncertain" ? `<p>Confira a fila e os publicados no Buffer. Não envie novamente sem verificar.</p><button type="button" data-reconcile="${escape(d.id)}">Resolver resultado incerto</button>` : ""}</div></article>`).join("")}</div><button type="button" id="buffer-sync">Atualizar status</button><a href="https://publish.buffer.com" target="_blank" rel="noopener noreferrer">Abrir Buffer</a><p class="hint">Consultas ao Buffer no máximo uma vez por hora por envio. Posts agendados só serão confirmados depois da publicação.</p><div id="buffer-compose"></div><p role="status" id="buffer-message"></p>`;
+  root.innerHTML = `<h3>Publicação pelo Buffer</h3><p>Imagens no Instagram/Threads e vídeo vertical no TikTok/YouTube. Você confere e aprova antes de enviar.</p><div>${deliveries.map((d) => `<article class="archive-item"><div><strong>${escape(names[d.service])}: ${escape(DELIVERY_LABELS[d.status] ?? d.status)}</strong><p>${escape(d.error)}</p>${d.due_at ? `<small>Horário: ${escape(new Date(d.due_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }))} (Brasília)</small>` : ""}${d.url && link(d.url) ? `<p><a href="${link(d.url)}" target="_blank" rel="noopener noreferrer">Ver publicação</a></p>` : ""}<small>Registro: ${escape(d.id)}${d.post_id ? ` · Buffer: ${escape(d.post_id)}` : ""}</small>${d.post_id && ["scheduled", "error", "draft", "needs_approval"].includes(d.status) ? `<label class="check"><input type="checkbox" data-cancel-check="${escape(d.id)}">Quero cancelar este envio no Buffer</label><button type="button" data-cancel="${escape(d.id)}">Cancelar agendamento</button>` : ""}${d.status === "uncertain" ? `<p>Confira a fila e os publicados no Buffer. Não envie novamente sem verificar.</p><button type="button" data-reconcile="${escape(d.id)}">Resolver resultado incerto</button>` : ""}</div></article>`).join("")}</div><button type="button" id="buffer-sync">Atualizar status</button><a href="https://publish.buffer.com" target="_blank" rel="noopener noreferrer">Abrir Buffer</a><p class="hint">Consultas ao Buffer no máximo uma vez por hora por envio. Posts agendados só serão confirmados depois da publicação.</p><div id="buffer-compose"></div><p role="status" id="buffer-message"></p>`;
   const message = root.querySelector<HTMLElement>("#buffer-message")!;
   root.querySelector<HTMLButtonElement>("#buffer-sync")!.onclick = async () => {
     try {
@@ -167,7 +176,7 @@ export async function mountBufferSend(
   );
   const area = root.querySelector<HTMLElement>("#buffer-compose")!;
   if (
-    !configuration.keyConfigured ||
+    (!configuration.keyConfigured && !configuration.youtubeKeyConfigured) ||
     !configuration.storageConfigured ||
     !configuration.mappings.length
   ) {
@@ -185,7 +194,7 @@ export async function mountBufferSend(
       "<p>As redes conectadas deste conteúdo já têm um envio. Acompanhe os registros acima.</p>";
     return;
   }
-  area.innerHTML = `<fieldset id="buffer-options"><legend>Materiais para aprovar</legend>${available.map((service) => `<label class="check"><input type="checkbox" data-send-service="${service}" checked>${names[service]} · ${escape(configuration.mappings.find((m: any) => m.service === service).name)}</label><label>Legenda — ${names[service]}<textarea data-send-text="${service}" rows="5" maxlength="${service === "threads" ? 500 : 2200}">${escape(service === "tiktok" ? (snapshot.captions.tiktok ?? snapshot.captions.instagram) : snapshot.captions[service])}</textarea></label>`).join("")}<label>Segundos por página do TikTok<input id="buffer-seconds" type="number" min="3" max="20" value="8"></label><label class="check"><input id="buffer-ai" type="checkbox">Sinalizar conteúdo gerado por IA no TikTok</label><label>Quando publicar<select id="buffer-mode"><option value="customScheduled">Agendar horário</option><option value="shareNow">Publicar agora</option></select></label><label>Data e hora (Brasília)<input id="buffer-due" type="datetime-local"></label><button type="button" id="buffer-prepare">Preparar envio ao Buffer</button></fieldset><div id="buffer-materials" class="art-pages"></div><label class="check"><input id="buffer-approved" type="checkbox" disabled>Conferi os materiais, as legendas, os perfis e o horário. Autorizo enviar às redes selecionadas.</label><button type="button" id="buffer-submit" disabled>Aprovar e enviar ao Buffer</button>`;
+  area.innerHTML = `<fieldset id="buffer-options"><legend>Materiais para aprovar</legend>${available.map((service) => `<label class="check"><input type="checkbox" data-send-service="${service}" checked>${names[service]} · ${escape(configuration.mappings.find((m: any) => m.service === service).name)}</label><label>Legenda — ${names[service]}<textarea data-send-text="${service}" rows="5" maxlength="${service === "threads" ? 500 : service === "youtube" ? 5000 : 2200}">${escape(service === "tiktok" ? (snapshot.captions.tiktok ?? snapshot.captions.instagram) : snapshot.captions[service])}</textarea></label>`).join("")}<label>Segundos por página do vídeo (TikTok/YouTube)<input id="buffer-seconds" type="number" min="3" max="20" value="8"></label><label class="check"><input id="buffer-ai" type="checkbox">Sinalizar conteúdo gerado por IA no TikTok/YouTube</label>${available.includes("youtube") ? `<label>Título — YouTube<input id="buffer-youtube-title" maxlength="100" value="${escape(snapshot.captions.youtubeTitle)}"></label><p class="hint">YouTube: vídeo público · categoria Educação · não destinado a crianças.</p>` : ""}<label>Quando publicar<select id="buffer-mode"><option value="customScheduled">Agendar horário</option><option value="shareNow">Publicar agora</option></select></label><label>Data e hora (Brasília)<input id="buffer-due" type="datetime-local"></label><button type="button" id="buffer-prepare">Preparar envio ao Buffer</button></fieldset><div id="buffer-materials" class="art-pages"></div><label class="check"><input id="buffer-approved" type="checkbox" disabled>Conferi os materiais, as legendas, os perfis e o horário. Autorizo enviar às redes selecionadas.</label><button type="button" id="buffer-submit" disabled>Aprovar e enviar ao Buffer</button>`;
   const options = area.querySelector<HTMLFieldSetElement>("fieldset")!,
     prepare = area.querySelector<HTMLButtonElement>("#buffer-prepare")!,
     submit = area.querySelector<HTMLButtonElement>("#buffer-submit")!,
@@ -240,7 +249,7 @@ export async function mountBufferSend(
       const holder = area.querySelector("#buffer-materials")!;
       holder.replaceChildren();
       const images: Blob[] = [];
-      if (services.some((s) => s !== "tiktok"))
+      if (services.some((s) => !isVideoService(s)))
         for (const canvas of await renderEditorial(snapshot, "feed")) {
           images.push(
             await new Promise<Blob>((resolve, reject) =>
@@ -253,7 +262,7 @@ export async function mountBufferSend(
           holder.append(canvas);
         }
       let video: Blob | null = null;
-      if (services.includes("tiktok")) {
+      if (services.some(isVideoService)) {
         const { createShortsVideo } = await import("./video-encoder");
         video = await createShortsVideo(
           await renderEditorial(snapshot, "shorts"),
@@ -289,6 +298,16 @@ export async function mountBufferSend(
     const services = selected(),
       mode = area.querySelector<HTMLSelectElement>("#buffer-mode")!.value;
     const due = area.querySelector<HTMLInputElement>("#buffer-due")!.value;
+    if (services.includes("youtube")) {
+      const title = area
+        .querySelector<HTMLInputElement>("#buffer-youtube-title")!
+        .value.trim();
+      if (!title || title.length > 100 || /[<>]/.test(title)) {
+        message.textContent =
+          "Preencha um título do YouTube com até 100 caracteres, sem < ou >.";
+        return;
+      }
+    }
     if (
       mode === "customScheduled" &&
       (!due ||
@@ -303,7 +322,11 @@ export async function mountBufferSend(
       const text = area
         .querySelector<HTMLTextAreaElement>(`[data-send-text="${service}"]`)!
         .value.trim();
-      if (!text || [...text].length > (service === "threads" ? 500 : 2200)) {
+      if (
+        !text ||
+        [...text].length >
+          (service === "threads" ? 500 : service === "youtube" ? 5000 : 2200)
+      ) {
         message.textContent = `Confira o tamanho da legenda de ${names[service]}.`;
         return;
       }
@@ -344,7 +367,14 @@ export async function mountBufferSend(
               `[data-send-text="${service}"]`,
             )!
             .value.trim(),
-          assets: service === "tiktok" ? [videoId] : imageIds,
+          assets: isVideoService(service) ? [videoId] : imageIds,
+          ...(service === "youtube"
+            ? {
+                youtubeTitle: area
+                  .querySelector<HTMLInputElement>("#buffer-youtube-title")!
+                  .value.trim(),
+              }
+            : {}),
           mode,
           ...(mode === "customScheduled"
             ? { dueAt: new Date(due + ":00-03:00").toISOString() }

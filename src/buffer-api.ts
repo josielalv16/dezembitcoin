@@ -11,7 +11,17 @@ export type BufferEnv = {
   DB: D1Database;
   MEDIA?: R2Bucket;
   BUFFER_API_KEY?: string;
+  BUFFER_YOUTUBE_API_KEY?: string;
 };
+function accountEnv(env: BufferEnv, service: string): BufferEnv {
+  if (service !== "youtube") return env;
+  if (!env.BUFFER_YOUTUBE_API_KEY)
+    throw new RemoteError(
+      "Configure BUFFER_YOUTUBE_API_KEY nos segredos do Worker para conectar o YouTube.",
+      true,
+    );
+  return { ...env, BUFFER_API_KEY: env.BUFFER_YOUTUBE_API_KEY };
+}
 const now = () => new Date().toISOString();
 const reply = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -221,7 +231,7 @@ async function recordPost(
   await env.DB.batch(statements);
 }
 export async function syncBuffer(env: BufferEnv, itemId?: string) {
-  if (!env.BUFFER_API_KEY) return;
+  if (!env.BUFFER_API_KEY && !env.BUFFER_YOUTUBE_API_KEY) return;
   const at = now();
   // A lost response is never retried as a new post.
   await env.DB.prepare(
@@ -246,7 +256,7 @@ export async function syncBuffer(env: BufferEnv, itemId?: string) {
     if (!claimed.meta.changes) continue;
     try {
       const data = await bufferGraph(
-        env,
+        accountEnv(env, delivery.service),
         `query Post($input: PostInput!) { post(input:$input) { ${postFields} } }`,
         { input: { id: delivery.post_id } },
       );
@@ -320,21 +330,36 @@ async function route(
     ).results;
     return reply({
       keyConfigured: !!env.BUFFER_API_KEY,
+      youtubeKeyConfigured: !!env.BUFFER_YOUTUBE_API_KEY,
       storageConfigured: !!env.MEDIA,
       mappings,
     });
   }
   if (path === "/discover" && request.method === "POST") {
-    const account = await bufferGraph(
-      env,
-      "query { account { organizations { id } } }",
-    );
     const found = [];
-    for (const org of account.account.organizations)
-      for (const channel of await channels(env, org.id)) {
-        if (BUFFER_SERVICES.includes(channel.service as any))
-          found.push({ ...channel, organizationId: org.id });
-      }
+    for (const service of ["instagram", "youtube"]) {
+      if (
+        service === "youtube"
+          ? !env.BUFFER_YOUTUBE_API_KEY
+          : !env.BUFFER_API_KEY
+      )
+        continue;
+      const selectedEnv = accountEnv(env, service);
+      const account = await bufferGraph(
+        selectedEnv,
+        "query { account { organizations { id } } }",
+      );
+      for (const org of account.account.organizations)
+        for (const channel of await channels(selectedEnv, org.id)) {
+          if (
+            BUFFER_SERVICES.includes(channel.service as any) &&
+            (service === "youtube"
+              ? channel.service === "youtube"
+              : channel.service !== "youtube")
+          )
+            found.push({ ...channel, organizationId: org.id });
+        }
+    }
     return reply({ channels: found });
   }
   if (path === "/channels" && request.method === "POST") {
@@ -347,13 +372,15 @@ async function route(
         }),
       )
       .min(1)
-      .max(3)
+      .max(4)
       .parse(await readBody(request));
     if (new Set(input.map((i) => i.service)).size !== input.length)
       throw new Error("Escolha um perfil por rede.");
     const verified = [];
     for (const mapping of input) {
-      const channel = (await channels(env, mapping.organizationId)).find(
+      const channel = (
+        await channels(accountEnv(env, mapping.service), mapping.organizationId)
+      ).find(
         (c) => c.id === mapping.channelId && c.service === mapping.service,
       );
       if (!channel || channel.isDisconnected || channel.isLocked)
@@ -469,7 +496,8 @@ async function route(
       .bind(input.requestId)
       .first<Delivery>();
     if (existing) return reply({ delivery: existing });
-    if (!env.MEDIA || !env.BUFFER_API_KEY)
+    const selectedEnv = accountEnv(env, input.service);
+    if (!env.MEDIA || !selectedEnv.BUFFER_API_KEY)
       throw new Error("Configure BUFFER_API_KEY e R2 MEDIA antes de enviar.");
     const v = await version(env, input.versionId);
     if (!v.reviewed_at)
@@ -488,7 +516,7 @@ async function route(
       throw new Error(
         "O perfil selecionado mudou. Reabra o conteúdo e confira o perfil antes de aprovar novamente.",
       );
-    const channel = (await channels(env, mapping.organization_id)).find(
+    const channel = (await channels(selectedEnv, mapping.organization_id)).find(
       (c) => c.id === mapping.channel_id && c.service === input.service,
     );
     if (
@@ -565,7 +593,7 @@ async function route(
       .first<Delivery>())!;
     try {
       const data = await bufferGraph(
-        env,
+        selectedEnv,
         `mutation CreatePost($input: CreatePostInput!) { createPost(input:$input) { __typename ... on PostActionSuccess { post { ${postFields} } } ... on MutationError { message } } }`,
         { input: payload },
       );
@@ -573,7 +601,7 @@ async function route(
         const message = String(
           data.createPost?.message ?? "Buffer recusou o envio.",
         )
-          .replaceAll(env.BUFFER_API_KEY, "[redacted]")
+          .replaceAll(selectedEnv.BUFFER_API_KEY!, "[redacted]")
           .slice(0, 500);
         if (data.createPost?.message) throw new RemoteError(message, true);
         throw new RemoteError(
@@ -629,7 +657,7 @@ async function route(
       );
     if (input.postId && !input.noPostConfirmed) {
       const data = await bufferGraph(
-        env,
+        accountEnv(env, delivery.service),
         `query Post($input: PostInput!) { post(input:$input) { ${postFields} } }`,
         { input: { id: input.postId } },
       );
@@ -682,7 +710,7 @@ async function route(
         "Este envio não pode ser cancelado aqui. Atualize o status e confira o Buffer.",
       );
     const data = await bufferGraph(
-      env,
+      accountEnv(env, delivery.service),
       `query Post($input: PostInput!) { post(input:$input) { ${postFields} } }`,
       { input: { id: delivery.post_id } },
     );
@@ -701,7 +729,7 @@ async function route(
       throw new Error("O envio mudou. Atualize antes de cancelar.");
     try {
       const result = await bufferGraph(
-        env,
+        accountEnv(env, delivery.service),
         "mutation Cancel($input: DeletePostInput!) { deletePost(input:$input) { __typename ... on VoidMutationError { message } } }",
         { input: { id: delivery.post_id } },
       );

@@ -87,7 +87,7 @@ describe("Buffer GraphQL diagnostics", () => {
     },
   );
 });
-function fixture() {
+function fixture(migrateYoutube = true) {
   const sql = new DatabaseSync(":memory:");
   connections.push(sql);
   sql.exec("PRAGMA foreign_keys=ON");
@@ -95,6 +95,7 @@ function fixture() {
     "0001_initial.sql",
     "0002_editorial.sql",
     "0003_buffer.sql",
+    ...(migrateYoutube ? ["0004_buffer_youtube.sql"] : []),
   ])
     sql.exec(readFileSync(`migrations/${file}`, "utf8"));
   const prepare = (query: string) => {
@@ -184,15 +185,17 @@ function fixture() {
     if (body.query.includes("query Channels"))
       return Response.json({
         data: {
-          channels: ["instagram", "threads", "tiktok"].map((service) => ({
-            id: service + "-channel",
-            service,
-            name: service,
-            displayName: service,
-            isDisconnected: false,
-            isLocked: false,
-            isQueuePaused: false,
-          })),
+          channels: ["instagram", "threads", "tiktok", "youtube"].map(
+            (service) => ({
+              id: service + "-channel",
+              service,
+              name: service,
+              displayName: service,
+              isDisconnected: false,
+              isLocked: false,
+              isQueuePaused: false,
+            }),
+          ),
         },
       });
     if (body.query.includes("mutation CreatePost"))
@@ -225,6 +228,178 @@ function fixture() {
   return { sql, env, input, remote, fetcher, call, sends };
 }
 describe("Buffer approved publishing with real SQLite constraints", () => {
+  it("preserves existing channels, plans and active deliveries during migration", async () => {
+    const f = fixture(false);
+    await f.call("/send", f.input);
+    const channels = f.sql
+      .prepare("SELECT * FROM buffer_channels ORDER BY service")
+      .all();
+    const deliveries = f.sql.prepare("SELECT * FROM buffer_deliveries").all();
+    const plans = f.sql.prepare("SELECT * FROM calendar_items").all();
+    f.sql.exec(readFileSync("migrations/0004_buffer_youtube.sql", "utf8"));
+    expect(
+      f.sql.prepare("SELECT * FROM buffer_channels ORDER BY service").all(),
+    ).toEqual(channels);
+    expect(f.sql.prepare("SELECT * FROM buffer_deliveries").all()).toEqual(
+      deliveries,
+    );
+    expect(f.sql.prepare("SELECT * FROM calendar_items").all()).toEqual(plans);
+  });
+  function youtubeFixture() {
+    const f = fixture();
+    f.env.BUFFER_YOUTUBE_API_KEY = "youtube-test-key";
+    f.sql
+      .prepare(
+        "INSERT INTO buffer_channels VALUES('youtube','youtube-channel','YouTube','youtube-org',?)",
+      )
+      .run(new Date().toISOString());
+    f.sql.exec("UPDATE buffer_assets SET mime='video/mp4'");
+    f.remote.channelId = "youtube-channel";
+    return {
+      ...f,
+      input: {
+        ...f.input,
+        service: "youtube",
+        expectedChannelId: "youtube-channel",
+        youtubeTitle: "Dia de Bitcoin",
+      },
+    };
+  }
+  it("routes YouTube creation and polling exclusively to its second account", async () => {
+    const f = youtubeFixture();
+    const result = await f.call("/send", f.input);
+    expect(result.data.delivery.status).toBe("scheduled");
+    expect(JSON.parse(f.sends()[0][1].body).variables.input).toMatchObject({
+      assets: [{ video: { url: expect.any(String) } }],
+      metadata: {
+        youtube: {
+          title: "Dia de Bitcoin",
+          categoryId: "27",
+          privacy: "public",
+          madeForKids: false,
+        },
+      },
+    });
+    f.sql.exec("UPDATE buffer_deliveries SET next_check_at='2000-01-01'");
+    f.remote.status = "sent";
+    Object.assign(f.remote, { sentAt: new Date().toISOString() });
+    await syncBuffer(f.env);
+    expect(
+      f.sql.prepare("SELECT channel FROM editorial_publications").get(),
+    ).toEqual({ channel: "youtube" });
+    expect(
+      f.fetcher.mock.calls.every(
+        (c) => c[1].headers.Authorization === "Bearer youtube-test-key",
+      ),
+    ).toBe(true);
+  });
+  it("uses the second key to reconcile and cancel a YouTube post", async () => {
+    const f = youtubeFixture();
+    await f.call("/send", f.input);
+    f.sql.exec("UPDATE buffer_deliveries SET status='uncertain'");
+    expect(
+      (
+        await f.call("/reconcile", {
+          id: f.input.requestId,
+          postId: f.remote.id,
+          noPostConfirmed: false,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await f.call("/cancel", { id: f.input.requestId, confirmed: true }))
+        .status,
+    ).toBe(200);
+    expect(
+      f.fetcher.mock.calls.every(
+        (c) => c[1].headers.Authorization === "Bearer youtube-test-key",
+      ),
+    ).toBe(true);
+  });
+  it("never falls back to the primary account when the YouTube key is missing", async () => {
+    const f = youtubeFixture();
+    delete f.env.BUFFER_YOUTUBE_API_KEY;
+    expect((await f.call("/send", f.input)).data.error).toContain(
+      "BUFFER_YOUTUBE_API_KEY",
+    );
+    expect(f.fetcher).not.toHaveBeenCalled();
+  });
+  it("keeps Instagram on the primary key even with the YouTube account configured", async () => {
+    const f = fixture();
+    f.env.BUFFER_YOUTUBE_API_KEY = "youtube-test-key";
+    await f.call("/send", f.input);
+    expect(
+      f.fetcher.mock.calls.every(
+        (c) => c[1].headers.Authorization === "Bearer test-only-not-real",
+      ),
+    ).toBe(true);
+  });
+  it("validates YouTube title and video before creating a remote post", async () => {
+    const f = youtubeFixture();
+    expect(
+      (await f.call("/send", { ...f.input, youtubeTitle: undefined })).status,
+    ).toBe(400);
+    expect(
+      (await f.call("/send", { ...f.input, youtubeTitle: "x".repeat(101) }))
+        .status,
+    ).toBe(400);
+    f.sql.exec("UPDATE buffer_assets SET mime='image/png'");
+    expect((await f.call("/send", f.input)).status).toBe(400);
+    expect(f.sends()).toHaveLength(0);
+  });
+  it("discovers each account separately and saves all four profiles", async () => {
+    const f = fixture();
+    f.env.BUFFER_YOUTUBE_API_KEY = "youtube-test-key";
+    const original = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (url: any, options: any) =>
+      JSON.parse(options.body).query.includes("account { organizations")
+        ? Response.json({
+            data: {
+              account: {
+                organizations: [
+                  {
+                    id:
+                      options.headers.Authorization ===
+                      "Bearer youtube-test-key"
+                        ? "yt-org"
+                        : "org",
+                  },
+                ],
+              },
+            },
+          })
+        : original(url, options),
+    );
+    const found = (await f.call("/discover", {})).data.channels;
+    expect(found).toHaveLength(4);
+    expect(found.find((c: any) => c.service === "youtube").organizationId).toBe(
+      "yt-org",
+    );
+    expect(
+      (
+        await f.call(
+          "/channels",
+          found.map((c: any) => ({
+            service: c.service,
+            channelId: c.id,
+            organizationId: c.organizationId,
+          })),
+        )
+      ).status,
+    ).toBe(200);
+    expect(f.sql.prepare("SELECT * FROM buffer_channels").all()).toHaveLength(
+      4,
+    );
+    for (const [, options] of f.fetcher.mock.calls) {
+      const body = JSON.parse(options.body);
+      if (body.query.includes("query Channels"))
+        expect(options.headers.Authorization).toBe(
+          body.variables.input.organizationId === "yt-org"
+            ? "Bearer youtube-test-key"
+            : "Bearer test-only-not-real",
+        );
+    }
+  });
   it("rejects missing approval and unreviewed/stale versions without sending", async () => {
     const f = fixture();
     expect(
@@ -526,14 +701,14 @@ describe("Buffer approved publishing with real SQLite constraints", () => {
         (f.sql.prepare("SELECT channels_json FROM calendar_items").get() as any)
           .channels_json,
       ),
-    ).toEqual(["instagram", "threads", "tiktok"]);
+    ).toEqual(["instagram", "threads", "tiktok", "youtube"]);
   });
 });
 describe("Buffer media and scheduling rules", () => {
-  it("does not enable YouTube or accept unapproved requests", () => {
+  it("rejects unsupported networks", () => {
     const f = fixture();
     expect(() =>
-      sendSchema.parse({ ...f.input, service: "youtube" }),
+      sendSchema.parse({ ...f.input, service: "facebook" }),
     ).toThrow();
   });
   it("rejects past/distant dates, oversized Threads captions and mixed media", () => {

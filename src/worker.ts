@@ -20,6 +20,7 @@ interface Env {
   ASSETS: Fetcher;
   ADMIN_PASSWORD?: string;
   BUFFER_API_KEY?: string;
+  BUFFER_YOUTUBE_API_KEY?: string;
   MEDIA?: R2Bucket;
 }
 const json = (v: unknown, status = 200) =>

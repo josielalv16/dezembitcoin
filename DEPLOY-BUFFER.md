@@ -1,6 +1,6 @@
 # Ativar publicações pelo Buffer
 
-O sistema prepara PNGs para Instagram/Threads e MP4 vertical para TikTok. Você revisa a versão, confere os materiais e autoriza o envio. YouTube continua disponível como exportação manual e histórico, mas não participa da integração.
+O sistema prepara PNGs para Instagram/Threads e MP4 vertical para TikTok e YouTube/Shorts. Você revisa a versão, confere os materiais e autoriza o envio. O YouTube utiliza uma segunda conta do Buffer, com chave própria.
 
 ## 1. Criar a chave do Buffer
 
@@ -15,6 +15,16 @@ No Cloudflare: **Workers & Pages → dezembitcoin → Settings → Variables and
 | Valor | A chave criada no Buffer |
 
 Salve/implante a alteração. Este segredo pertence ao Worker em execução, **não** às variáveis de build. O sistema nunca mostra nem devolve a chave ao navegador. O Wrangler preserva os segredos nos próximos deploys.
+
+### Segunda conta para YouTube
+
+Na nova conta do Buffer, conecte o canal do YouTube e crie uma chave em API settings. No mesmo painel **Variables and Secrets do Worker em execução**, adicione outro **Secret** chamado `BUFFER_YOUTUBE_API_KEY`, com a chave dessa segunda conta. Mantenha `BUFFER_API_KEY` como está. Não coloque a chave nas variáveis de build nem no código.
+
+A busca de perfis consulta as duas contas. Envios, consultas de status, conferência e cancelamento do YouTube usam exclusivamente a segunda chave, sem tentar a conta principal quando ela está ausente. Você verá o estado das duas chaves na tela Buffer.
+
+O vídeo é MP4 vertical; o título e a descrição são revisáveis antes da aprovação. A publicação usa categoria Educação, visibilidade pública e indicação de não destinada a crianças. O checkbox de IA também se aplica ao YouTube. Requisitos da API: https://developers.buffer.com/types/YoutubePostMetadataInput.html.
+
+A implantação aplica `0004_buffer_youtube.sql` automaticamente. Os perfis e envios anteriores são preservados. Novos itens usam as quatro redes; nos itens já existentes, marque **YouTube / Shorts** em **Planejamento** e salve antes de gerar/revisar e preparar o envio. Itens com envio ativo precisam ser concluídos ou cancelados antes de editar o planejamento.
 
 ## 2. Criar o armazenamento dos materiais
 
@@ -37,7 +47,7 @@ Sem `R2_BUCKET_NAME`, o deploy continua funcionando para os recursos anteriores,
 1. Abra **Buffer** no menu do Dez em Bitcoin.
 2. Confira se chave e armazenamento aparecem como configurados.
 3. Clique em **Buscar perfis conectados**.
-4. Escolha o perfil correto de Instagram, Threads e TikTok e clique em **Salvar perfis selecionados**.
+4. Escolha o perfil correto de Instagram, Threads, TikTok e YouTube e clique em **Salvar perfis selecionados**.
 
 Caso um perfil esteja desconectado, bloqueado ou com a fila pausada, resolva no Buffer. O tipo da conta e suas permissões precisam permitir publicação automática, e não somente lembretes. A resposta do Buffer será apresentada se alguma configuração do perfil impedir o envio.
 

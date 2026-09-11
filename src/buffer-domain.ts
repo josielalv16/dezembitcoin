@@ -1,12 +1,26 @@
 import { z } from "zod";
-export const BUFFER_SERVICES = ["instagram", "threads", "tiktok"] as const;
+export const BUFFER_SERVICES = [
+  "instagram",
+  "threads",
+  "tiktok",
+  "youtube",
+] as const;
+export const isVideoService = (service: string) =>
+  service === "tiktok" || service === "youtube";
 export type BufferService = (typeof BUFFER_SERVICES)[number];
 export const sendSchema = z.object({
   requestId: z.string().uuid(),
   versionId: z.string().min(1).max(150),
   expectedChannelId: z.string().min(1).max(150),
   service: z.enum(BUFFER_SERVICES),
-  text: z.string().trim().min(1).max(2200),
+  text: z.string().trim().min(1).max(5000),
+  youtubeTitle: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .refine((value) => !/[<>]/.test(value), "Título inválido")
+    .optional(),
   assets: z.array(z.string().uuid()).min(1).max(10),
   mode: z.enum(["shareNow", "customScheduled"]),
   dueAt: z.string().datetime({ offset: true }).optional(),
@@ -53,6 +67,12 @@ export function validateSend(
 ) {
   if (new Set(input.assets).size !== input.assets.length)
     throw new Error("Não repita arquivos no carrossel.");
+  if (input.service === "youtube" && !input.youtubeTitle)
+    throw new Error(
+      "Preencha o título do vídeo do YouTube (até 100 caracteres).",
+    );
+  if (input.service !== "youtube" && input.text.length > 2200)
+    throw new Error("A legenda deve ter até 2200 caracteres.");
   if (input.service === "threads" && [...input.text].length > 500)
     throw new Error("A legenda do Threads deve ter até 500 caracteres.");
   if (
@@ -63,11 +83,13 @@ export function validateSend(
   )
     throw new Error("Agende entre 2 minutos e 30 dias a partir de agora.");
   if (
-    input.service === "tiktok"
+    isVideoService(input.service)
       ? mimes.length !== 1 || mimes[0] !== "video/mp4"
       : mimes.some((m) => m !== "image/png")
   )
-    throw new Error("Use um MP4 no TikTok e PNGs no Instagram/Threads.");
+    throw new Error(
+      "Use um MP4 no TikTok/YouTube e PNGs no Instagram/Threads.",
+    );
 }
 export function postInput(input: SendInput, channelId: string, urls: string[]) {
   return {
@@ -79,13 +101,26 @@ export function postInput(input: SendInput, channelId: string, urls: string[]) {
     saveToDraft: false,
     ...(input.mode === "customScheduled" ? { dueAt: input.dueAt } : {}),
     assets: urls.map((url) =>
-      input.service === "tiktok" ? { video: { url } } : { image: { url } },
+      isVideoService(input.service) ? { video: { url } } : { image: { url } },
     ),
     ...(input.service === "instagram"
       ? { metadata: { instagram: { type: "post", shouldShareToFeed: true } } }
       : {}),
     ...(input.service === "tiktok"
       ? { metadata: { tiktok: { isAiGenerated: input.aiGenerated } } }
+      : {}),
+    ...(input.service === "youtube"
+      ? {
+          metadata: {
+            youtube: {
+              title: input.youtubeTitle,
+              categoryId: "27",
+              privacy: "public",
+              madeForKids: false,
+              isAiGenerated: input.aiGenerated,
+            },
+          },
+        }
       : {}),
   };
 }
