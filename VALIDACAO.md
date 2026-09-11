@@ -51,3 +51,9 @@ Limites: o cron foi validado em código e no empacotamento, mas sua execução n
 - Navegador: aprovação desmarcada por padrão, prévias de seis PNGs e MP4 vertical, upload de sete arquivos ao R2 local e três envios simulados. Nenhuma publicação real realizada.
 - HTTP: mídia MP4 com Range retornou 206; endpoints privados sem autenticação retornaram 401.
 - A conexão e a publicação reais dependem de configurar BUFFER_API_KEY, R2 e os perfis e de aprovar um conteúdo na conta do usuário.
+
+## Radar por notícia — importação do Codex
+
+- 60 testes passaram, incluindo seis novos testes de importação com SQLite e migrations reais: quatro versões independentes sem aprovação/publicação, idempotência, preservação de revisão, rollback integral e rejeição de fontes/datas/páginas inválidas.
+- Navegador local: importação real de JSON fictício criou quatro cartões; conteúdo abriu com quatro artes, fonte correta, revisão desmarcada e regeneração genérica bloqueada para preservar a pesquisa.
+- Validador CLI executado sobre o mesmo JSON de teste. Nenhum conteúdo de teste enviado ao Buffer ou à produção.

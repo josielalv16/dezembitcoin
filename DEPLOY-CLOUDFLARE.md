@@ -68,7 +68,7 @@ Na página do Worker:
 
 Não adicione cron manual duplicado: a configuração já está versionada em `wrangler.jsonc`.
 
-O terceiro cron faz a manutenção editorial às 18h de Brasília e coleta candidatos do Radar às sextas. A migration `0002_editorial.sql` adiciona as tabelas sem apagar compras, cotações ou arquivos antigos. Para atualizar a instalação existente, mantenha **build: `npm run build`** e **deploy: `npm run deploy`**, o mesmo D1_DATABASE_ID e ADMIN_PASSWORD. Não há nova variável obrigatória. Após o deploy, abra **Calendário → Gerar calendário** e confira **Marcos**. Guia: [GUIA-EDITORIAL.md](GUIA-EDITORIAL.md).
+O terceiro cron faz a manutenção editorial às 18h de Brasília ; a pesquisa do Radar agora ocorre no Codex e é importada pelo usuário. A migration `0002_editorial.sql` adiciona as tabelas sem apagar compras, cotações ou arquivos antigos. Para atualizar a instalação existente, mantenha **build: `npm run build`** e **deploy: `npm run deploy`**, o mesmo D1_DATABASE_ID e ADMIN_PASSWORD. Não há nova variável obrigatória. Após o deploy, abra **Calendário → Gerar calendário** e confira **Marcos**. Guia: [GUIA-EDITORIAL.md](GUIA-EDITORIAL.md).
 
 ## 5. Primeiro acesso
 

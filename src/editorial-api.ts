@@ -22,6 +22,7 @@ import {
   type Achievement,
 } from "./editorial-milestones";
 import { collectNews } from "./editorial-news";
+import { importRadar } from "./radar-api";
 type Env = { DB: D1Database };
 const tables = [
   "editorial_settings",
@@ -173,14 +174,7 @@ export async function editorialMaintenance(env: Env) {
       .run();
     throw e;
   }
-  if (new Date(today() + "T12:00:00Z").getUTCDay() === 5) {
-    const item = await env.DB.prepare(
-      "SELECT * FROM calendar_items WHERE origin_key=? AND lifecycle='active'",
-    )
-      .bind("weekly:" + today())
-      .first<CalendarItem>();
-    if (item && !item.current_version) await collectNews(env, item);
-  }
+  // Weekly research is prepared in Codex and imported with its own carousels.
 }
 const newsSchema = z.object({
   url: z
@@ -240,6 +234,19 @@ async function route(
   const url = new URL(request.url),
     path = url.pathname.replace("/api/editorial", ""),
     method = request.method;
+  if (path === "/radar/import" && method === "POST") {
+    try {
+      return response(await importRadar(env.DB, await readBody(request)));
+    } catch (error) {
+      if (error instanceof z.ZodError) throw error;
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Arquivo do Radar")
+      )
+        throw new EditorialError(error.message);
+      throw error;
+    }
+  }
   if (path === "/calendar" && method === "POST") {
     const p = z
       .object({
@@ -510,6 +517,8 @@ async function route(
         "Desfaça a confirmação antes de remover uma rede publicada.",
       );
     const changedText = p.note !== item.note || p.title !== item.title;
+    if (changedText && item.origin_key.startsWith("radar-import:"))
+      throw new EditorialError("Para preservar a pesquisa importada, ajuste o conteúdo em Editar textos do carrossel. Neste formulário, mantenha título e observação e altere apenas o planejamento.");
     await execute([
       env.DB.prepare(
         "UPDATE calendar_items SET planned_date=?,deadline=?,title=?,note=?,lifecycle=?,cancel_reason=?,extra=?,channels_json=?,current_version=? WHERE id=?",
@@ -589,6 +598,10 @@ async function route(
     return response({ ok: true });
   }
   if (method === "POST" && (action === "generate" || action === "draft")) {
+    if (action === "generate" && item.origin_key.startsWith("radar-import:"))
+      throw new EditorialError(
+        "Este Radar já contém as páginas da pesquisa. Use Salvar nova versão dos textos para ajustar o carrossel.",
+      );
     let snapshot: EditorialSnapshot;
     if (action === "generate") {
       const data = await financialData(env),

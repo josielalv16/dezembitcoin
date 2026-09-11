@@ -166,6 +166,13 @@ export interface Slide {
   chartMode?: "average";
 }
 export interface EditorialSnapshot {
+  research?: {
+    weekStart: string;
+    weekEnd: string;
+    researchedAt: string;
+    selectionNote: string;
+    story: import("./radar-import").RadarPackage["stories"][number];
+  };
   templateVersion: 1;
   title: string;
   kind: string;

@@ -38,7 +38,7 @@ As prévias, PNGs, ZIPs e prompts de imagem usam sempre 1080 × 1350 (4:5), incl
 | Sábado  | Resumo semanal          | Compras e cotação salvas                            |
 | Domingo | Reflexão visual         | Dados e texto pessoal                               |
 
-As compras diárias têm cartões próprios. O conteúdo complementar financeiro usa os sete dias encerrados na véspera, limitado ao início do desafio. No primeiro dia, usa o próprio dia. O Radar cobre sábado a sexta, até o horário efetivo da pesquisa.
+As compras diárias têm cartões próprios. O conteúdo complementar financeiro usa os sete dias encerrados na véspera, limitado ao início do desafio. No primeiro dia, usa o próprio dia. O Radar tradicional cobre sábado a sexta. O novo pacote pesquisado pelo Codex cobre segunda a sexta, até o horário efetivo da pesquisa.
 
 Os mensais são distribuídos a partir do dia escolhido do mês seguinte: fechamento, comparação, ranking, médias, evolução, aprendizados, dificuldade, balanço/próximo foco e taxas. No fim do mês, itens que ultrapassariam a última data ficam nesse último dia; podem ser reagendados individualmente. O mês inicial do desafio cobre apenas o período desde 09/09/2026.
 
@@ -65,13 +65,13 @@ Altere a data e o prazo para adiar. Use **Pausado** para suspender um item. **Ca
 
 ## Radar e IA
 
-Às sextas, a manutenção das 18h de Brasília consulta os RSS da Ethereum Foundation e Cointelegraph. São **candidatos com título, fonte, link e data**, sem resumo ou comentário inventado. A coleta também pode ser solicitada dentro do Radar. Não substitui uma pesquisa abrangente do mercado; falhas ficam em **Execuções automáticas**.
+O agendamento no Codex pesquisa quatro notícias toda sexta às 18h e entrega um arquivo JSON com um carrossel independente por notícia. Importe em **Calendário → Importar Radar preparado pelo Codex** e revise os conteúdos. Consulte [RADAR-CODEX.md](RADAR-CODEX.md) para o contrato do arquivo e as regras editoriais. A coleta RSS automática foi desativada; o formulário tradicional continua disponível para uso manual e histórico.
 
 No item, use **Copiar prompt de pesquisa** em uma ferramenta com busca na web. O prompt pede o período e um arquivo JSON compatível. Importe a pesquisa e confira os campos visuais de cada notícia. Importações sempre entram sem revisão. Também é possível cadastrar notícias manualmente. Selecione até cinco; todas precisam ter fato, contexto, comentário e conferência antes da geração.
 
 As páginas distinguem notícia de análise/inferência e levam as URLs. O envio às redes pelo Buffer exige revisão e autorização explícita dos materiais. Sem fatos relevantes, cancele o Radar com esse motivo, sem transformar falha de coleta em afirmação de que não houve notícias.
 
-**Copiar prompt para IA** permite criar uma variação visual fora do sistema, inclusive a reflexão de domingo. Não é necessário contratar uma API para usar os templates PNG. Esta versão não chama modelos de IA, não importa imagens externas para o arquivo de versões e não cria agendamento dentro do ChatGPT/Codex; a automação implantada é a coleta RSS no Worker. O arquivo baixado pelo sistema reproduz sua própria arte programática.
+**Copiar prompt para IA** permite criar uma variação visual fora do sistema, inclusive a reflexão de domingo. Não é necessário contratar uma API para usar os templates PNG. O sistema não chama uma API de IA nem importa imagens externas para o arquivo de versões. A pesquisa semanal é executada pelo agendamento do Codex e o usuário importa o JSON resultante. O arquivo baixado pelo sistema reproduz sua própria arte programática.
 
 ## Marcos
 
@@ -95,7 +95,7 @@ Cada ocorrência guarda compras de referência, valor, data e cotação quando a
 
 ## Agendamento e backup
 
-O terceiro cron, `0 * * * *`, consulta os envios do Buffer a cada hora e faz manutenção diária às 18h de Brasília: mantém o horizonte de meses configurado, analisa marcos e, às sextas, coleta candidatos do Radar. Os dois crons de cotação continuam. O horário real e as falhas são registrados; uma falha pode ser tratada pelos botões do painel. Não há promessa de execução pontual ou de disponibilidade das fontes.
+O terceiro cron, `0 * * * *`, consulta os envios do Buffer a cada hora e faz manutenção diária às 18h de Brasília: mantém o horizonte de meses configurado, analisa marcos. Os dois crons de cotação continuam. O horário real e as falhas são registrados; uma falha pode ser tratada pelos botões do painel. Não há promessa de execução pontual ou de disponibilidade das fontes.
 
 O backup JSON passa a `version: 2`, mantendo os dados antigos e adicionando calendário, versões, publicações, histórico, configurações, marcos, notícias e execuções. Não inclui senhas. A restauração continua administrativa e assistida.
 

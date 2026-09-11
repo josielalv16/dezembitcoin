@@ -1,4 +1,5 @@
 import { videoControls, bindVideo } from "./video";
+import { mountRadarImport } from "./radar-client";
 import { mountBufferSend } from "./buffer-client";
 import { DELIVERY_LABELS, type Delivery } from "./buffer-domain";
 import "./editorial.css";
@@ -162,7 +163,16 @@ export async function mountEditorial(
    )
    .join(
      "",
-   )}</select></label><p class="hint">Confirmação manual por rede. Nenhum post é enviado automaticamente.</p></div><div id="calendar-grid"></div><details class="panel"><summary>Execuções automáticas</summary>${data.jobs.length ? data.jobs.map((j: any) => `<p>${e(stamp(j.executed_at))} · ${e(j.job)} · ${e(j.message)}</p>`).join("") : "<p>A primeira manutenção ocorrerá na próxima execução agendada.</p>"}</details>`;
+   )}</select></label><p class="hint">Revise cada conteúdo e confirme a postagem manual ou aprove o envio pelo Buffer.</p></div><section class="panel" id="radar-import"></section><div id="calendar-grid"></div><details class="panel"><summary>Execuções automáticas</summary>${data.jobs.length ? data.jobs.map((j: any) => `<p>${e(stamp(j.executed_at))} · ${e(j.job)} · ${e(j.message)}</p>`).join("") : "<p>A primeira manutenção ocorrerá na próxima execução agendada.</p>"}</details>`;
+    mountRadarImport(
+      root.querySelector<HTMLElement>("#radar-import")!,
+      api,
+      async (selectedMonth) => {
+        month = selectedMonth;
+        await load();
+      },
+      notify,
+    );
     root.querySelector<HTMLInputElement>("#cal-month")!.onchange = run(
       async () => {
         month = root.querySelector<HTMLInputElement>("#cal-month")!.value;
@@ -330,8 +340,8 @@ export async function mountEditorial(
      "",
    )}</select></label></div><label>Observação pessoal / texto editorial<textarea name="note" rows="4" maxlength="2400">${e(i.note)}</textarea></label><label>Motivo do cancelamento ou substituição<input name="cancel_reason" value="${e(i.cancel_reason)}"></label><div class="editorial-toolbar">${CHANNELS.map((c) => `<label class="check"><input type="checkbox" name="channel" value="${c}" ${channels.includes(c) ? "checked" : ""}>${c === "youtube" ? "YouTube / Shorts" : c}</label>`).join("")}<label class="check"><input type="checkbox" name="extra" ${i.extra ? "checked" : ""}>Conteúdo extra</label></div><button class="primary">Salvar planejamento</button><p class="hint">Alterar texto exige nova geração. Versões e confirmações anteriores permanecem no histórico. Para combinar conteúdos, registre o vínculo na observação e pause ou cancele o item substituído.</p></form></details>
  ${
-   i.kind === "radar"
-     ? `<section class="panel"><h3>Radar • fatos, contexto e comentário</h3><p>A coleta traz títulos e links candidatos. O resumo e o comentário precisam de pesquisa e revisão.</p><div class="editorial-toolbar"><button id="collect">Buscar fontes RSS</button><button id="research">Copiar prompt de pesquisa</button><button id="news-example">Baixar modelo JSON</button></div><label>Importar pesquisa (.json)<input id="news-file" type="file" accept=".json,application/json"></label><form id="news-form"><label>Notícias — JSON editável<textarea id="news-json" rows="14" spellcheck="false">${e(
+   i.kind === "radar" && !snapshot?.research
+     ? `<section class="panel"><h3>Radar • fatos, contexto e comentário</h3><p>Para os quatro carrosséis do Codex, use Importar Radar preparado pelo Codex na tela do Calendário. Este formulário é o modelo antigo de notícias agrupadas.</p><p>A coleta traz títulos e links candidatos. O resumo e o comentário precisam de pesquisa e revisão.</p><div class="editorial-toolbar"><button id="collect">Buscar fontes RSS</button><button id="research">Copiar prompt de pesquisa</button><button id="news-example">Baixar modelo JSON</button></div><label>Importar pesquisa (.json)<input id="news-file" type="file" accept=".json,application/json"></label><form id="news-form"><label>Notícias — JSON editável<textarea id="news-json" rows="14" spellcheck="false">${e(
          JSON.stringify(
            d.news.map(({ id, item_id, selected, reviewed, ...n }) => ({
              ...n,
@@ -344,7 +354,8 @@ export async function mountEditorial(
        )}</textarea></label><p class="hint">Até cinco selecionadas. Marque reviewed=true somente após conferir a fonte, a data, o resumo, o contexto e o comentário. Sem fatos relevantes? Cancele o item com esse motivo.</p><button>Salvar notícias</button></form>${d.news.map((n) => `<p><a href="${e(n.url)}" target="_blank" rel="noopener noreferrer">${e(n.title)}</a> · ${e(n.source)} · ${e(stamp(n.published_at))}</p>`).join("")}</section>`
      : ""
  }
- <section class="panel"><p class="hint">Imagens para Instagram/Threads: 1080 × 1350 (4:5). Vídeo para YouTube/Shorts: 1080 × 1920 (9:16).</p><div class="editorial-toolbar"><button id="generate" class="primary">${version ? "Gerar nova versão" : "Gerar conteúdo"}</button>${version ? '<button id="zip">Baixar pacote ZIP</button><button id="prompt">Copiar prompt para IA</button>' : ""}</div>${
+ ${snapshot?.research ? `<section class="panel"><h3>Pesquisa do Codex</h3><p>Corte: ${e(stamp(snapshot.research.researchedAt))} · Acontecimento: ${e(snapshot.research.story.eventDate)}</p><p>${e(snapshot.research.selectionNote)}</p><p>${e(snapshot.research.story.summary)}</p><p>${e(snapshot.research.story.context)}</p><p><strong>${e(snapshot.research.story.classification)}:</strong> ${e(snapshot.research.story.commentary)}</p>${snapshot.research.story.sources.map((s) => `<p><a href="${e(s.url)}" target="_blank" rel="noopener noreferrer">${e(s.name)} — ${e(s.title)}</a> · ${e(stamp(s.publishedAt))}</p>`).join("")}<p>Confira as fontes e todas as páginas antes de confirmar a revisão abaixo.</p></section>` : ""}
+ <section class="panel"><p class="hint">Imagens para Instagram/Threads: 1080 × 1350 (4:5). Vídeo para YouTube/Shorts: 1080 × 1920 (9:16).</p><div class="editorial-toolbar"><button id="generate" class="primary" ${snapshot?.research ? 'disabled title="Use Editar textos do carrossel para ajustar a pesquisa importada"' : ""}>${version ? "Gerar nova versão" : "Gerar conteúdo"}</button>${version ? '<button id="zip">Baixar pacote ZIP</button><button id="prompt">Copiar prompt para IA</button>' : ""}</div>${
    !version
      ? '<p class="hint">A geração verifica compras, cotação e observações necessárias. As pendências serão informadas.</p>'
      : `<p>Versão de ${e(stamp(version.created_at))} • ${version.reviewed_at ? "revisada" : "aguardando revisão"}</p><div id="art-pages" class="art-pages"></div>${videoControls}<details><summary>Editar textos do carrossel</summary><p class="hint">Cria outra versão para revisão. Confira os números com o snapshot antes de publicar.</p><form id="pages-form"><textarea id="pages-json" rows="12" spellcheck="false">${e(
@@ -430,6 +441,10 @@ export async function mountEditorial(
         });
       })();
     };
+    if (snapshot?.research) {
+      dialog.querySelector<HTMLInputElement>('[name="title"]')!.readOnly = true;
+      dialog.querySelector<HTMLTextAreaElement>('[name="note"]')!.readOnly = true;
+    }
     button("#generate", () => action("generate", {}));
     if (snapshot && version) {
       bindVideo(
@@ -556,7 +571,7 @@ export async function mountEditorial(
           await exportEditorial(s, await renderEditorial(s, "feed"), "feed");
         })),
     );
-    if (i.kind === "radar") {
+    if (i.kind === "radar" && !snapshot?.research) {
       const newsForm = dialog.querySelector<HTMLFormElement>("#news-form")!;
       let editingNews = d.news.map(
         ({ id, item_id, selected, reviewed, ...n }) => ({
