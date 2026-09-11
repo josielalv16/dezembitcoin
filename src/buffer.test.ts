@@ -6,6 +6,7 @@ import {
   syncBuffer,
   publicBufferMedia,
   type BufferEnv,
+  bufferGraph,
 } from "./buffer-api";
 import {
   postInput,
@@ -19,6 +20,73 @@ afterEach(() => {
   connections.splice(0).forEach((db) => db.close());
 });
 const assetId = "ad3f6c1e-eeb7-42be-a2d9-b568cd1c378a";
+describe("Buffer GraphQL diagnostics", () => {
+  it("keeps validation details without leaking the API key", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          errors: [
+            {
+              message:
+                'Variable "$input" got invalid value: Field "shouldShareToFeed" of required type "Boolean!" was not provided. secret-test',
+              extensions: { code: "BAD_USER_INPUT" },
+            },
+          ],
+        }),
+      ),
+    );
+    await expect(
+      bufferGraph(
+        { DB: {} as D1Database, BUFFER_API_KEY: "secret-test" },
+        "unused",
+      ),
+    ).rejects.toMatchObject({
+      definite: true,
+      message: expect.stringContaining('"shouldShareToFeed"'),
+    });
+    await expect(
+      bufferGraph(
+        { DB: {} as D1Database, BUFFER_API_KEY: "secret-test" },
+        "unused",
+      ),
+    ).rejects.toMatchObject({
+      message: expect.not.stringContaining("secret-test"),
+    });
+  });
+  it.each([
+    {
+      errors: [
+        {
+          message: "Resolver failed",
+          extensions: { code: "INTERNAL_SERVER_ERROR" },
+          path: ["createPost"],
+        },
+      ],
+    },
+    { errors: [{ message: "Unclassified failure" }] },
+    {
+      data: { createPost: { post: { id: "existing" } } },
+      errors: [
+        {
+          message: "Partial response",
+          extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+        },
+      ],
+    },
+  ])(
+    "preserves uncertain status for execution/partial/unknown errors",
+    async (response) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => Response.json(response)),
+      );
+      await expect(
+        bufferGraph({ DB: {} as D1Database, BUFFER_API_KEY: "test" }, "unused"),
+      ).rejects.toMatchObject({ definite: false });
+    },
+  );
+});
 function fixture() {
   const sql = new DatabaseSync(":memory:");
   connections.push(sql);
@@ -322,6 +390,35 @@ describe("Buffer approved publishing with real SQLite constraints", () => {
       f.sql.prepare("SELECT * FROM editorial_publications").all(),
     ).toHaveLength(0);
   });
+  it("records a GraphQL input rejection and permits only a new approved attempt", async () => {
+    const f = fixture();
+    const original = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (url: any, options: any) =>
+      JSON.parse(options.body).query.includes("mutation CreatePost")
+        ? Response.json({
+            errors: [
+              {
+                message:
+                  'Variable "$input" got invalid value: shouldShareToFeed is required',
+                extensions: { code: "BAD_USER_INPUT" },
+              },
+            ],
+          })
+        : original(url, options),
+    );
+    const result = await f.call("/send", f.input);
+    expect(result.data.delivery.status).toBe("rejected");
+    expect(result.data.delivery.error).toContain("shouldShareToFeed");
+    expect(f.sends()).toHaveLength(1);
+    expect(
+      f.sql.prepare("SELECT * FROM editorial_publications").all(),
+    ).toHaveLength(0);
+    f.fetcher.mockImplementation(original);
+    expect(
+      (await f.call("/send", { ...f.input, requestId: crypto.randomUUID() }))
+        .data.delivery.status,
+    ).toBe("scheduled");
+  });
   it("allows a new approved attempt after an explicit provider rejection", async () => {
     const f = fixture();
     const original = f.fetcher.getMockImplementation()!;
@@ -477,5 +574,18 @@ describe("Buffer media and scheduling rules", () => {
     expect(remoteStatus("needs_approval")).toBe("needs_approval");
     expect(remoteStatus("sending")).toBe("processing");
     expect(remoteStatus("new-unknown-status")).toBe("uncertain");
+  });
+  it("includes the required Instagram feed metadata and preserves carousel order", () => {
+    const f = fixture();
+    const urls = [
+      "https://example.test/first.png",
+      "https://example.test/second.png",
+    ];
+    expect(
+      postInput(sendSchema.parse(f.input), "instagram-channel", urls),
+    ).toMatchObject({
+      metadata: { instagram: { type: "post", shouldShareToFeed: true } },
+      assets: urls.map((url) => ({ image: { url } })),
+    });
   });
 });

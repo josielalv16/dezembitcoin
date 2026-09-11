@@ -82,7 +82,7 @@ export function postInput(input: SendInput, channelId: string, urls: string[]) {
       input.service === "tiktok" ? { video: { url } } : { image: { url } },
     ),
     ...(input.service === "instagram"
-      ? { metadata: { instagram: { type: "post" } } }
+      ? { metadata: { instagram: { type: "post", shouldShareToFeed: true } } }
       : {}),
     ...(input.service === "tiktok"
       ? { metadata: { tiktok: { isAiGenerated: input.aiGenerated } } }

@@ -81,7 +81,35 @@ export async function bufferGraph(
       "Resposta inválida do Buffer; confira se o post foi criado.",
     );
   }
-  if (result.errors?.length || !result.data)
+  if (Array.isArray(result.errors) && result.errors.length) {
+    const details = result.errors
+      .slice(0, 3)
+      .map((error: any) =>
+        String(error?.message ?? "Erro sem detalhes")
+          .replaceAll(env.BUFFER_API_KEY!, "[redacted]")
+          .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+          .slice(0, 500),
+      )
+      .join("; ");
+    // Only pre-execution errors prove that retrying cannot duplicate a post.
+    const definite =
+      !result.data &&
+      result.errors.every(
+        (error: any) =>
+          !error?.path &&
+          ([
+            "GRAPHQL_PARSE_FAILED",
+            "GRAPHQL_VALIDATION_FAILED",
+            "UNAUTHENTICATED",
+          ].includes(error?.extensions?.code) ||
+            (error?.extensions?.code === "BAD_USER_INPUT" &&
+              /^Variable ["']\$\w+["'] (got invalid value|of required type)/.test(
+                error?.message ?? "",
+              ))),
+      );
+    throw new RemoteError(`Buffer: ${details}`, definite);
+  }
+  if (!result.data)
     throw new RemoteError(
       "A API do Buffer não confirmou a operação. Confira as permissões e o painel do Buffer.",
     );
